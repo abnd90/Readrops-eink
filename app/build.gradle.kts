@@ -1,3 +1,4 @@
+
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -98,4 +99,7 @@ dependencies {
     androidTestImplementation(libs.okhttp.mockserver)
 
     implementation(libs.aboutlibraries.composem3)
+    implementation(libs.material.icons.extended)
+
+    implementation(libs.readability4j)
 }

@@ -8,16 +8,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import cafe.adriel.voyager.core.annotation.ExperimentalVoyagerApi
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.NavigatorDisposeBehavior
-import cafe.adriel.voyager.transitions.SlideTransition
+import cafe.adriel.voyager.transitions.ScreenTransition
+import cafe.adriel.voyager.transitions.ScreenTransitionContent
 import com.readrops.app.account.selection.AccountSelectionScreen
 import com.readrops.app.account.selection.AccountSelectionScreenModel
 import com.readrops.app.home.HomeScreen
@@ -90,10 +96,11 @@ class MainActivity : ComponentActivity(), KoinComponent {
                             handleIntent(intent)
                         }
 
-                        SlideTransition(
-                            navigator = navigator,
-                            disposeScreenAfterTransitionEnd = true
-                        )
+                        NoTransition (
+                            navigator = navigator
+                        ) { screen ->
+                            screen.Content()
+                        }
                     }
                 }
             }
@@ -144,4 +151,25 @@ class MainActivity : ComponentActivity(), KoinComponent {
             else -> darkFlag == Configuration.UI_MODE_NIGHT_YES
         }
     }
+}
+
+@OptIn(ExperimentalVoyagerApi::class)
+@Composable
+fun NoTransition(
+    navigator: Navigator,
+    modifier: Modifier = Modifier,
+    content: ScreenTransitionContent
+) {
+    ScreenTransition(
+        navigator = navigator,
+        modifier = modifier,
+        content = content,
+        disposeScreenAfterTransitionEnd = true,
+        transition = {
+            ContentTransform(
+                targetContentEnter = EnterTransition.None,
+                initialContentExit = ExitTransition.None
+            )
+        }
+    )
 }

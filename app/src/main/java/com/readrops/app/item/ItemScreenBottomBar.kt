@@ -4,19 +4,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.readrops.app.R
-import com.readrops.app.util.FeedColors
 import com.readrops.app.util.theme.spacing
 
 data class BottomBarState(
@@ -24,23 +27,33 @@ data class BottomBarState(
     val isStarred: Boolean = false
 )
 
+enum class ReadabilityState {
+    OFF, ON, IN_PROGRESS
+}
+
 @Composable
 fun ItemScreenBottomBar(
     state: BottomBarState,
-    accentColor: Color,
+    pageInfo: Pair<Int, Int>,
     onShare: () -> Unit,
     onOpenUrl: () -> Unit,
     onChangeReadState: (Boolean) -> Unit,
     onChangeStarState: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    readabilityState: ReadabilityState,
+    onReadability: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    /*
     val tint = if (FeedColors.isColorDark(accentColor.toArgb()))
         Color.White
     else
         Color.Black
+     */
+    val tint = Color.Black
+    val tintOff = Color(0xff666666)
 
     Surface(
-        color = accentColor,
+        //color = accentColor,
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
@@ -94,6 +107,43 @@ fun ItemScreenBottomBar(
                     contentDescription = null
                 )
             }
+
+            IconButton(
+                onClick = {
+                    when (readabilityState) {
+                        ReadabilityState.OFF -> onReadability(true)
+                        ReadabilityState.ON -> onReadability(false)
+                        ReadabilityState.IN_PROGRESS -> { /* Do nothing */ }
+                    }
+                },
+                enabled = readabilityState != ReadabilityState.IN_PROGRESS
+            ) {
+                when (readabilityState) {
+                    ReadabilityState.OFF -> {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_reader_mode),
+                            tint = tintOff,
+                            contentDescription = null
+                        )
+                    }
+                    ReadabilityState.ON -> {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_reader_mode),
+                            tint = tint,
+                            contentDescription = null
+                        )
+                    }
+                    ReadabilityState.IN_PROGRESS -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+            }
+
+            Text("${pageInfo.first + 1} / ${pageInfo.second}", modifier = Modifier.align(Alignment.CenterVertically))
         }
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.readrops.app.util.components.FeedIcon
@@ -46,7 +47,10 @@ fun DrawerFolderItem(
     onFeedClick: (Feed) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = NavigationDrawerItemDefaults.colors()
+    val colors = NavigationDrawerItemDefaults.colors(
+        selectedContainerColor = Color.Transparent,
+        unselectedContainerColor = Color.Transparent
+    )
 
     var isExpanded by remember { mutableStateOf(feeds.any { it.id == selectedFeed }) }
     val rotationState by animateFloatAsState(
@@ -127,7 +131,9 @@ fun DrawerFolderItem(
                     badge = { Text(feed.unreadCount.toString()) },
                     selected = feed.id == selectedFeed,
                     onClick = { onFeedClick(feed) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier
+                        .padding(NavigationDrawerItemDefaults.ItemPadding)
+                        .selectedItemBorder(feed.id == selectedFeed),
                 )
             }
         }

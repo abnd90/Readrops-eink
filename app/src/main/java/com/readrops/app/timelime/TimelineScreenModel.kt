@@ -118,6 +118,10 @@ class TimelineScreenModel(
         }
     }
 
+    fun setCurrentTimelinePage(page: Int) {
+        _timelineState.update { it.copy(currentPage = page )}
+    }
+
     private fun getTimelinePreferences(): Flow<TimelinePreferences> {
         return combine(
             preferences.timelineItemSize.flow,
@@ -151,15 +155,13 @@ class TimelineScreenModel(
 
         val pager = Pager(
             config = PagingConfig(
-                initialLoadSize = 50,
                 pageSize = 50,
-                prefetchDistance = 15
             ),
             pagingSourceFactory = {
                 database.itemDao().selectAll(query)
             },
         ).flow
-            .cachedIn(screenModelScope)
+        .cachedIn(screenModelScope)
 
         _timelineState.update {
             it.copy(
@@ -170,7 +172,6 @@ class TimelineScreenModel(
                 },
                 isAccountLocal = currentAccount!!.isLocal,
                 scrollToTop = true,
-                hideReadAllFAB = !currentAccount!!.config.canMarkAllItemsAsRead
             )
         }
 
@@ -201,7 +202,6 @@ class TimelineScreenModel(
                 _timelineState.update {
                     it.copy(
                         isRefreshing = true,
-                        hideReadAllFAB = true
                     )
                 }
             }
@@ -216,7 +216,6 @@ class TimelineScreenModel(
                         _timelineState.update {
                             it.copy(
                                 isRefreshing = false,
-                                hideReadAllFAB = false,
                                 scrollToTop = true,
                                 localSyncErrors = errors?.ifEmpty { null }
                             )
@@ -233,7 +232,6 @@ class TimelineScreenModel(
                             it.copy(
                                 syncError = error,
                                 isRefreshing = false,
-                                hideReadAllFAB = false
                             )
                         }
 
@@ -319,10 +317,12 @@ class TimelineScreenModel(
     }
 
     fun setItemRead(item: Item) {
-        item.isRead = true
+        if (!item.isRead) {
+            item.isRead = true
 
-        screenModelScope.launch(dispatcher) {
-            repository?.setItemReadState(item)
+            screenModelScope.launch(dispatcher) {
+                repository?.setItemReadState(item)
+            }
         }
     }
 
@@ -456,8 +456,8 @@ data class TimelineState(
     val itemState: Flow<PagingData<ItemWithFeed>> = emptyFlow(),
     val dialog: DialogState? = null,
     val isAccountLocal: Boolean = false,
-    val hideReadAllFAB: Boolean = false,
-    val preferences: TimelinePreferences = TimelinePreferences()
+    val preferences: TimelinePreferences = TimelinePreferences(),
+    val currentPage: Int = 0,
 ) {
 
     val showSubtitle = filters.subFilter != SubFilter.ALL
@@ -467,7 +467,7 @@ data class TimelineState(
 
 @Stable
 data class TimelinePreferences(
-    val itemSize: TimelineItemSize = TimelineItemSize.LARGE,
+    val itemSize: TimelineItemSize = TimelineItemSize.COMPACT,
     val markReadOnScroll: Boolean = false,
     val displayNotificationsPermission: Boolean = false,
     val showReadItems: Boolean = true,

@@ -5,24 +5,31 @@ import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowLeft
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -31,26 +38,35 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -71,9 +87,11 @@ import com.readrops.db.filters.OrderType
 import com.readrops.db.filters.SubFilter
 import com.readrops.db.pojo.ItemWithFeed
 import kotlinx.coroutines.flow.filter
+import kotlin.math.abs
 
 
 object TimelineTab : Tab {
+    private fun readResolve(): Any = TimelineTab
 
     override val options: TabOptions
         @Composable
@@ -83,7 +101,7 @@ object TimelineTab : Tab {
         )
 
     @SuppressLint("InlinedApi")
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -95,12 +113,24 @@ object TimelineTab : Tab {
         val items = state.itemState.collectAsLazyPagingItems()
 
         val lazyListState = rememberLazyListState()
+        var lazyRowHeight by remember { mutableStateOf(0.dp) }
         val snackbarHostState = remember { SnackbarHostState() }
         val topAppBarState = rememberTopAppBarState()
         val topAppBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
+        var totalPages by remember { mutableStateOf(0) }
 
-        val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
-            screenModel.disableDisplayNotificationsPermission()
+        val launcher =
+            rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
+                screenModel.disableDisplayNotificationsPermission()
+            }
+
+        val nextListPage = {
+            if (state.currentPage < totalPages - 1)
+                screenModel.setCurrentTimelinePage(state.currentPage + 1)
+        }
+        val prevListPage = {
+            if (state.currentPage != 0)
+                screenModel.setCurrentTimelinePage(state.currentPage - 1)
         }
 
         LaunchedEffect(preferences.displayNotificationsPermission) {
@@ -172,23 +202,7 @@ object TimelineTab : Tab {
             }
         }
 
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                TimelineDrawer(
-                    state = state,
-                    onClickDefaultItem = {
-                        screenModel.updateDrawerDefaultItem(it)
-                    },
-                    onFolderClick = {
-                        screenModel.updateDrawerFolderSelection(it)
-                    },
-                    onFeedClick = {
-                        screenModel.updateDrawerFeedSelection(it)
-                    }
-                )
-            }
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -229,12 +243,30 @@ object TimelineTab : Tab {
                             }
                         },
                         actions = {
+                            /*
                             IconButton(
                                 onClick = { screenModel.openDialog(DialogState.FilterSheet) }
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_filter_list),
                                     contentDescription = null
+                                )
+                            }
+                             */
+
+                            IconButton(
+                                onClick = { screenModel.setShowReadItemsState(!state.filters.showReadItems) }
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        id =
+                                        if (state.filters.showReadItems) {
+                                            R.drawable.ic_show_unread
+                                        } else {
+                                            R.drawable.ic_show_read
+                                        }
+                                    ),
+                                    contentDescription = null,
                                 )
                             }
 
@@ -251,31 +283,51 @@ object TimelineTab : Tab {
                     )
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) },
-                floatingActionButton = {
-                    if (!state.hideReadAllFAB) {
-                        FloatingActionButton(
-                            onClick = {
-                                if (state.filters.mainFilter == MainFilter.ALL) {
-                                    screenModel.openDialog(DialogState.ConfirmDialog)
-                                } else {
-                                    screenModel.setAllItemsRead()
-                                }
-                            }
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_done_all),
-                                contentDescription = null
-                            )
-                        }
-                    }
-                },
             ) { paddingValues ->
+                var offsetX by remember { mutableStateOf(0f) }
+                val velocityTracker = remember { VelocityTracker() }
+                val SWIPE_THRESHOLD = 30
+                val SWIPE_VELOCITY_THRESHOLD = 30
+
                 Box(
                     modifier = Modifier
                         .padding(paddingValues)
                         .fillMaxSize()
                         .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragStart = {
+                                    velocityTracker.resetTracking()
+                                    offsetX = 0f
+                                },
+                                onDragEnd = {
+                                    val velocity = velocityTracker.calculateVelocity()
+                                    if (abs(offsetX) > SWIPE_THRESHOLD && abs(velocity.x) > SWIPE_VELOCITY_THRESHOLD) {
+                                        if (offsetX > 0) {
+                                            prevListPage()
+                                        } else {
+                                            nextListPage()
+                                        }
+                                    }
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    offsetX += dragAmount
+                                    velocityTracker.addPosition(
+                                        change.uptimeMillis,
+                                        change.position
+                                    )
+                                }
+                            )
+                        }
                 ) {
+                    Column {
+                        HorizontalDivider(
+                            color = Color.DarkGray,
+                            modifier = Modifier.padding(
+                                horizontal = MaterialTheme.spacing.largeSpacing
+                            )
+                        )
                     when {
                         state.displayRefreshScreen -> RefreshScreen(
                             currentFeed = state.currentFeed,
@@ -295,80 +347,226 @@ object TimelineTab : Tab {
                         }
 
                         else -> {
-                            PullToRefreshBox(
-                                isRefreshing = state.isRefreshing,
-                                onRefresh = { screenModel.refreshTimeline(context) },
-                            ) {
-                                if (items.itemCount > 0) {
-                                    MarkItemsRead(
-                                        lazyListState = lazyListState,
-                                        items = items,
-                                        markReadOnScroll = preferences.markReadOnScroll,
-                                        screenModel = screenModel
-                                    )
+                            MarkItemsRead(
+                                lazyListState = lazyListState,
+                                items = items,
+                                markReadOnScroll = preferences.markReadOnScroll,
+                                screenModel = screenModel
+                            )
 
-                                    LazyColumn(
+                            val density = LocalDensity.current
+                            val minTimelinePadding = 15.dp
+                            val timelineItemHeight = 68.dp + 2.dp + minTimelinePadding * 2
+                            var actualTimelinePadding = minTimelinePadding
+
+                            LaunchedEffect(state.currentPage) {
+                                lazyListState.scrollToItem(state.currentPage)
+                            }
+                            Column (modifier = Modifier.fillMaxSize()) {
+                                Box(modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                ) {
+                                    LazyRow(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .onSizeChanged { size ->
+                                                if (lazyRowHeight == 0.dp) {
+                                                    lazyRowHeight =
+                                                        with(density) { size.height.toDp() }
+                                                }
+                                            }
+                                            .padding(top = actualTimelinePadding),
+                                        verticalAlignment = Alignment.Top,
+                                        userScrollEnabled = false,
                                         state = lazyListState,
                                         contentPadding = PaddingValues(
-                                            vertical = if (preferences.itemSize == TimelineItemSize.COMPACT) {
-                                                0.dp
-                                            } else {
-                                                MaterialTheme.spacing.shortSpacing
-                                            }
+                                            horizontal = 50.dp,
                                         ),
-                                        verticalArrangement = Arrangement.spacedBy(
-                                            if (preferences.itemSize == TimelineItemSize.COMPACT) {
-                                                0.dp
-                                            } else
-                                                MaterialTheme.spacing.shortSpacing
-                                        )
+                                        horizontalArrangement = Arrangement.spacedBy(50.dp)
                                     ) {
+                                        val itemsPerColumn = if (lazyRowHeight > 0.dp) {
+                                            (lazyRowHeight / timelineItemHeight).toInt()
+                                        } else {
+                                            0 // Default value when height is not yet measured
+                                        }
+                                        if (itemsPerColumn > 0) {
+                                            actualTimelinePadding =
+                                                minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerColumn)) / (2 * itemsPerColumn)
+                                            totalPages =
+                                                (items.itemCount + itemsPerColumn - 1) / itemsPerColumn
+                                        }
                                         items(
-                                            count = items.itemCount,
-                                            key = items.itemKey { it.item.id },
-                                        ) { itemCount ->
-                                            val itemWithFeed = items[itemCount]
+                                            count = totalPages,
+                                            key = { it } // Use the index as the key
+                                        ) { pageIndex ->
+                                            Column(
+                                                modifier = Modifier.fillParentMaxSize(),
+                                                verticalArrangement = Arrangement.spacedBy(actualTimelinePadding)
+                                            ) {
+                                                repeat(itemsPerColumn) { columnIndex ->
+                                                    val itemIndex = pageIndex * itemsPerColumn + columnIndex
+                                                    if (itemIndex < items.itemCount) {
+                                                        val itemWithFeed = items[itemIndex]
+                                                        if (itemWithFeed != null) {
+                                                            TimelineItem(
+                                                                itemWithFeed = itemWithFeed,
+                                                                onClick = {
+                                                                    screenModel.setItemRead(
+                                                                        itemWithFeed.item
+                                                                    )
+                                                                    navigator.push(
+                                                                        ItemScreen(
+                                                                            itemId = itemWithFeed.item.id,
+                                                                        )
+                                                                    )
+                                                                },
+                                                                onFavorite = {
+                                                                    screenModel.updateStarState(
+                                                                        itemWithFeed.item
+                                                                    )
+                                                                },
+                                                                onShare = {
+                                                                    screenModel.shareItem(
+                                                                        itemWithFeed.item,
+                                                                        context
+                                                                    )
+                                                                },
+                                                                onSetReadState = {
+                                                                    screenModel.updateItemReadState(
+                                                                        itemWithFeed.item
+                                                                    )
+                                                                },
+                                                                size = preferences.itemSize,
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
 
-                                            if (itemWithFeed != null) {
-                                                TimelineItem(
-                                                    itemWithFeed = itemWithFeed,
-                                                    onClick = {
-                                                        screenModel.setItemRead(itemWithFeed.item)
-                                                        navigator.push(ItemScreen(itemWithFeed.item.id))
-                                                    },
-                                                    onFavorite = {
-                                                        screenModel.updateStarState(itemWithFeed.item)
-                                                    },
-                                                    onShare = {
-                                                        screenModel.shareItem(
-                                                            itemWithFeed.item,
-                                                            context
-                                                        )
-                                                    },
-                                                    onSetReadState = {
-                                                        screenModel.updateItemReadState(itemWithFeed.item)
-                                                    },
-                                                    size = preferences.itemSize
-                                                )
+                                                            if (columnIndex != itemsPerColumn - 1) {
+                                                                HorizontalDivider(
+                                                                    modifier = Modifier.padding(
+                                                                        horizontal = MaterialTheme.spacing.shortSpacing
+                                                                    )
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
-                                } else {
-                                    // Empty lazyColumn to let the pull to refresh be usable
-                                    // when no items are displayed
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {}
-
-                                    Placeholder(
-                                        text = stringResource(R.string.no_article),
-                                        painter = painterResource(R.drawable.ic_timeline),
+                                }
+                                Column {
+                                    HorizontalDivider(
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(
+                                            horizontal = MaterialTheme.spacing.largeSpacing
+                                        )
                                     )
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(vertical = 5.dp)
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val buttonWidth = 50.dp
+
+                                        IconButton(
+                                            modifier = Modifier.width(buttonWidth),
+                                            onClick = {
+                                                screenModel.setCurrentTimelinePage(0)
+                                            },
+                                            enabled = state.currentPage > 0
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.KeyboardDoubleArrowLeft,
+                                                contentDescription = "First page"
+                                            )
+                                        }
+                                        IconButton(
+                                            modifier = Modifier.width(buttonWidth),
+                                            onClick = {
+                                                prevListPage()
+                                            },
+                                            enabled = state.currentPage > 0
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.KeyboardArrowLeft,
+                                                contentDescription = "Previous page"
+                                            )
+                                        }
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+                                        ) {
+                                            val currentPage = if (totalPages != 0) state.currentPage + 1 else 0
+                                            Text(
+                                                "${currentPage}",
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(" / $totalPages")
+                                        }
+                                        IconButton(
+                                            modifier = Modifier.width(buttonWidth),
+                                            onClick = {
+                                                nextListPage()
+                                            },
+                                            enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowRight,
+                                                contentDescription = "Next page"
+                                            )
+                                        }
+                                        IconButton(
+                                            modifier = Modifier.width(buttonWidth),
+                                            onClick = {
+                                                screenModel.setCurrentTimelinePage(totalPages - 1)
+                                            },
+                                            enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.KeyboardDoubleArrowRight,
+                                                contentDescription = "Last page"
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                        }
                 }
+            }
+
+            if (state.isDrawerOpen) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInteropFilter {
+                            screenModel.closeDrawer()
+                            true
+                        }
+                )
+
+                TimelineDrawer(
+                    state = state,
+                    screenModel = screenModel,
+                    onClickDefaultItem = {
+                        screenModel.updateDrawerDefaultItem(it)
+                        screenModel.closeDrawer()
+                    },
+                    onFolderClick = {
+                        screenModel.updateDrawerFolderSelection(it)
+                        screenModel.closeDrawer()
+                    },
+                    onFeedClick = {
+                        screenModel.updateDrawerFeedSelection(it)
+                        screenModel.closeDrawer()
+                    },
+                    modifier = Modifier.matchParentSize(),
+                )
             }
 
             when (val dialog = state.dialog) {

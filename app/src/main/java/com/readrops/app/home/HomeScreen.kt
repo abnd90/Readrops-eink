@@ -9,30 +9,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.CurrentTab
 import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabNavigator
-import com.readrops.app.R
-import com.readrops.app.account.AccountTab
 import com.readrops.app.feeds.FeedTab
 import com.readrops.app.item.ItemScreen
-import com.readrops.app.more.MoreTab
 import com.readrops.app.timelime.TimelineTab
 import com.readrops.app.util.components.AndroidScreen
 import kotlinx.coroutines.channels.Channel
@@ -60,6 +48,7 @@ object HomeScreen : AndroidScreen() {
         ) { tabNavigator ->
             CompositionLocalProvider(LocalNavigator provides navigator) {
                 Scaffold(
+                    /*
                     bottomBar = {
                         BottomAppBar {
                             NavigationBarItem(
@@ -111,6 +100,8 @@ object HomeScreen : AndroidScreen() {
                             )
                         }
                     },
+
+                     */
                     contentWindowInsets = scaffoldInsets
                 ) { paddingValues ->
                     LaunchedEffect(Unit) {

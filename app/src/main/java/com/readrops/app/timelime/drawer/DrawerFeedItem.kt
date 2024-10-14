@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.readrops.app.util.theme.DrawerSpacing
 
@@ -25,7 +26,10 @@ fun DrawerFeedItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = NavigationDrawerItemDefaults.colors()
+    val colors = NavigationDrawerItemDefaults.colors(
+        selectedContainerColor = Color.Transparent,
+        unselectedContainerColor = Color.Transparent
+    )
 
     Surface(
         selected = selected,

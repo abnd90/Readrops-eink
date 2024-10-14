@@ -1,5 +1,6 @@
 <resources>
-    <style name="Theme.Readrops" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+    <style name="Theme.Readrops" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    </style>
 
     <style name="Theme.Readrops.SplashScreen" parent="Theme.SplashScreen.IconBackground">
         <item name="windowSplashScreenBackground">@color/splash</item>

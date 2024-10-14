@@ -28,6 +28,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.dankito.readability4j.Readability4J
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okio.IOException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import org.koin.core.parameter.parametersOf
@@ -183,6 +187,51 @@ class ItemScreenModel(
         }
 
         return FileProvider.getUriForFile(context, context.packageName, image)
+    }
+
+    fun readableArticleText(
+        itemWithFeed: ItemWithFeed,
+        onSuccess: (String) -> Unit,
+        onError: (String?) -> Unit
+    ) {
+        screenModelScope.launch(dispatcher) {
+            val url = itemWithFeed.item.link!!
+
+            val client: OkHttpClient = get()
+            val request = Request.Builder()
+                .url(url)
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                    val html = response.body!!.string()
+                    val readability = Readability4J(url, html)
+                    val article = readability.parse()
+
+                    onSuccess(article.content!!)
+                }
+            } catch (e: Exception) {
+                onError(e.message)
+            }
+        }
+    }
+
+    fun setItemJustifyText(value: Boolean) {
+        screenModelScope.launch {
+            preferences.itemJustifyText.write(value)
+        }
+    }
+    fun setItemTextSizeMultiplier(value: Float) {
+        screenModelScope.launch {
+            preferences.itemTextSizeMultiplier.write(value)
+        }
+    }
+    fun setItemLineSizeMultiplier(value: Float) {
+        screenModelScope.launch {
+            preferences.itemLineSizeMultiplier.write(value)
+        }
     }
 }
 

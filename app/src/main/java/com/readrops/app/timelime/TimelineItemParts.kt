@@ -1,6 +1,11 @@
 package com.readrops.app.timelime
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,24 +14,31 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.node.DelegatableNode
+import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
@@ -37,11 +49,12 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.readrops.app.R
-import com.readrops.app.util.components.FeedIcon
 import com.readrops.app.util.theme.ShortSpacer
 import com.readrops.app.util.theme.spacing
 import com.readrops.db.pojo.ItemWithFeed
 import com.readrops.db.util.DateUtils
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import kotlin.math.roundToInt
 
@@ -53,6 +66,7 @@ fun RegularTimelineItem(
     onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val textColor = if (itemWithFeed.item.isRead) Color.Gray else Color.Black;
     TimelineItemContainer(
         isRead = itemWithFeed.item.isRead,
         onClick = onClick,
@@ -62,6 +76,7 @@ fun RegularTimelineItem(
             modifier = Modifier.padding(MaterialTheme.spacing.mediumSpacing)
         ) {
             TimelineItemHeader(
+                textColor = textColor,
                 feedName = itemWithFeed.feedName,
                 feedIconUrl = itemWithFeed.feedIconUrl,
                 feedColor = itemWithFeed.color,
@@ -82,7 +97,7 @@ fun RegularTimelineItem(
             TimelineItemBadge(
                 date = itemWithFeed.item.pubDate!!,
                 duration = itemWithFeed.item.readTime,
-                color = itemWithFeed.color
+                textColor = textColor,
             )
         }
     }
@@ -97,27 +112,28 @@ fun CompactTimelineItem(
     modifier: Modifier = Modifier
 ) {
     val containerColor = MaterialTheme.colorScheme.background
-
+    val textColor = if (itemWithFeed.item.isRead) Color(0xff666666) else Color.Black;
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = Color.Transparent,
         modifier = modifier
-            .fillMaxWidth()
             .drawBehind {
                 // if some alpha is applied to the card, the swipe to dismiss background appears behind it
                 // so we draw a rect with the current screen background color behind the card but in front of the dismiss background
                 drawRect(containerColor)
             }
-            .alpha(if (itemWithFeed.item.isRead) readAlpha else 1f)
-            .clickable { onClick() }
+            .padding(top=1.dp)
+            .clickable( onClick = onClick, interactionSource = interactionSource, indication = null)
     ) {
         Column(
             modifier = Modifier.padding(
                 start = MaterialTheme.spacing.shortSpacing,
                 end = MaterialTheme.spacing.shortSpacing,
-                top = MaterialTheme.spacing.shortSpacing
+                //top = MaterialTheme.spacing.shortSpacing
             )
         ) {
             TimelineItemHeader(
+                textColor = textColor,
                 feedName = itemWithFeed.feedName,
                 feedIconUrl = itemWithFeed.feedIconUrl,
                 feedColor = itemWithFeed.color,
@@ -132,13 +148,7 @@ fun CompactTimelineItem(
 
             ShortSpacer()
 
-            TimelineItemTitle(title = itemWithFeed.item.title!!)
-
-            ShortSpacer()
-
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.shortSpacing)
-            )
+            TimelineItemTitle(title = itemWithFeed.item.title!!, textColor = textColor)
         }
     }
 }
@@ -170,6 +180,7 @@ fun LargeTimelineItem(
                     modifier = Modifier.padding(MaterialTheme.spacing.mediumSpacing)
                 ) {
                     TimelineItemHeader(
+                        textColor = Color.Black,
                         feedName = itemWithFeed.feedName,
                         feedIconUrl = itemWithFeed.feedIconUrl,
                         feedColor = itemWithFeed.color,
@@ -186,7 +197,7 @@ fun LargeTimelineItem(
                     TimelineItemBadge(
                         date = itemWithFeed.item.pubDate!!,
                         duration = itemWithFeed.item.readTime,
-                        color = itemWithFeed.color
+                        textColor = Color.Black
                     )
 
                     ShortSpacer()
@@ -258,6 +269,7 @@ fun TimelineItemContainer(
 
 @Composable
 fun TimelineItemHeader(
+    textColor: Color,
     feedName: String,
     feedIconUrl: String?,
     feedColor: Int,
@@ -278,12 +290,12 @@ fun TimelineItemHeader(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
+            /*
             FeedIcon(
                 iconUrl = feedIconUrl,
                 name = feedName
             )
-
-            ShortSpacer()
+             */
 
             Column {
                 Text(
@@ -291,18 +303,21 @@ fun TimelineItemHeader(
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    color = textColor,
+                    /*
                     color = if (feedColor != 0) {
                         Color(feedColor)
                     } else {
                         MaterialTheme.colorScheme.primary
                     },
+                     */
                 )
 
                 if (!folderName.isNullOrEmpty()) {
                     Text(
                         text = folderName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = textColor
                     )
                 }
             }
@@ -350,7 +365,7 @@ fun TimelineItemHeader(
             TimelineItemBadge(
                 date = date,
                 duration = duration,
-                color = feedColor
+                textColor = textColor
             )
         }
     }
@@ -359,14 +374,16 @@ fun TimelineItemHeader(
 
 @Composable
 fun TimelineItemTitle(
-    title: String
+    title: String,
+    textColor : Color = Color.Black
 ) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        maxLines = 2,
+        maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         fontWeight = FontWeight.Bold,
+        color = textColor,
     )
 }
 
@@ -374,14 +391,14 @@ fun TimelineItemTitle(
 fun TimelineItemBadge(
     date: LocalDateTime,
     duration: Double,
-    color: Int,
+    textColor: Color
 ) {
-    val textColor = if (color != 0) Color.White else MaterialTheme.colorScheme.onPrimary
 
 
     Surface(
-        color = if (color != 0) Color(color) else MaterialTheme.colorScheme.primary,
-        shape = RoundedCornerShape(48.dp)
+        color = Color.Transparent
+        //color = if (color != 0) Color(color) else MaterialTheme.colorScheme.primary,
+        //shape = RoundedCornerShape(48.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -392,13 +409,13 @@ fun TimelineItemBadge(
         ) {
             Text(
                 text = DateUtils.formattedDateByLocal(date),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = textColor
             )
 
             Text(
                 text = stringResource(id = R.string.interpoint),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.veryShortSpacing),
                 color = textColor
             )
@@ -409,9 +426,54 @@ fun TimelineItemBadge(
                 } else {
                     stringResource(id = R.string.read_time_lower_than_1)
                 },
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = textColor
             )
         }
     }
+}
+
+private class BorderNode(private val interactionSource: InteractionSource) :
+    Modifier.Node(), DrawModifierNode {
+
+    var currentPressPosition: Offset = Offset.Zero
+    val animatedScalePercent = Animatable(1f)
+
+    private val borderColor = Color.Black
+    private val borderWidth = 2.dp
+    private val cornerRadius = 4.dp
+
+    private var isPressed by mutableStateOf(false)
+
+    override fun onAttach() {
+        coroutineScope.launch {
+            interactionSource.interactions.collectLatest { interaction ->
+                when (interaction) {
+                    is PressInteraction.Press -> {isPressed = true}
+                    is PressInteraction.Release, is PressInteraction.Cancel -> {isPressed = false}
+                }
+            }
+        }
+    }
+
+    override fun ContentDrawScope.draw() {
+        drawContent()
+
+        if (isPressed) {
+            drawRoundRect(
+                color = borderColor,
+                style = Stroke(width = borderWidth.toPx()),
+                cornerRadius = CornerRadius(cornerRadius.toPx())
+            )
+        }
+    }
+}
+
+object BorderIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode {
+        return BorderNode(interactionSource)
+    }
+
+    override fun equals(other: Any?): Boolean = other === BorderIndication
+    override fun hashCode() = 100
 }

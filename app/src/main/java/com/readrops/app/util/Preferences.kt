@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -59,13 +60,13 @@ class Preferences(
     val timelineItemSize = Preference(
         dataStore = dataStore,
         key = stringPreferencesKey("timeline_item_size"),
-        default = "large"
+        default = "compact"
     )
 
     val displayNotificationsPermission = Preference(
         dataStore = dataStore,
         key = booleanPreferencesKey("display_notification_permission"),
-        default = true
+        default = false
     )
 
     val lastVersionCode = Preference(
@@ -90,6 +91,24 @@ class Preferences(
         dataStore = dataStore,
         key = stringPreferencesKey("order_type"),
         default = "DESC" // or "ASC", uppercase important, used with Enum.valueOf()
+    )
+
+    val itemJustifyText = Preference(
+        dataStore = dataStore,
+        key = booleanPreferencesKey("item_justify"),
+        default = false
+    )
+
+    val itemTextSizeMultiplier = Preference(
+        dataStore = dataStore,
+        key = floatPreferencesKey("item_size_multiplier"),
+        default = 1.0f
+    )
+
+    val itemLineSizeMultiplier = Preference(
+        dataStore = dataStore,
+        key = floatPreferencesKey("line_size_multiplier"),
+        default = 1.0f
     )
 }
 

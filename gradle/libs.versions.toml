@@ -86,6 +86,8 @@ jdk-desugar = "com.android.tools:desugar_jdk_libs_nio:2.1.2"
 
 jsoup = "org.jsoup:jsoup:1.18.1"
 moshi = "com.squareup.moshi:moshi:1.15.1"
+material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+readability4j = "net.dankito.readability4j:readability4j:1.0.8"
 
 # androidx
 corektx = "androidx.core:core-ktx:1.13.1"

@@ -1,31 +1,13 @@
 package com.readrops.app.timelime
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import com.readrops.app.R
 import com.readrops.app.util.DefaultPreview
 import com.readrops.app.util.theme.ReadropsTheme
-import com.readrops.app.util.theme.spacing
 import com.readrops.db.entities.Folder
 import com.readrops.db.pojo.ItemWithFeed
 import java.time.LocalDateTime
@@ -58,6 +40,7 @@ fun TimelineItem(
         }
     }
 
+    /*
     SwipeToDismissBox(
         state = swipeState,
         enableDismissFromStartToEnd = false,
@@ -118,6 +101,8 @@ fun TimelineItem(
             }
         }
     ) {
+
+     */
         when (size) {
             TimelineItemSize.COMPACT -> {
                 CompactTimelineItem(
@@ -150,7 +135,6 @@ fun TimelineItem(
             }
         }
     }
-}
 
 private val itemWithFeed = ItemWithFeed(
     item = com.readrops.db.entities.Item(
