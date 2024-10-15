@@ -76,6 +76,8 @@ import com.readrops.app.R
 import com.readrops.app.item.ItemScreen
 import com.readrops.app.timelime.drawer.TimelineDrawer
 import com.readrops.app.util.ErrorMessage
+import com.readrops.app.util.components.BorderedIconButton
+import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import com.readrops.app.util.components.Placeholder
 import com.readrops.app.util.components.RefreshScreen
@@ -233,8 +235,9 @@ object TimelineTab : Tab {
                             }
                         },
                         navigationIcon = {
-                            IconButton(
-                                onClick = { screenModel.openDrawer() }
+                            BorderedIconButton (
+                                onClick = { screenModel.openDrawer() },
+                                modifier = Modifier,
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Menu,
@@ -254,23 +257,23 @@ object TimelineTab : Tab {
                             }
                              */
 
-                            IconButton(
-                                onClick = { screenModel.setShowReadItemsState(!state.filters.showReadItems) }
+                            BorderedToggleIconButton (
+                                checked = preferences.showReadItems,
+                                onCheckedChange = { checked ->
+                                    screenModel.setShowReadItemsState(
+                                        checked
+                                    )
+                                }
                             ) {
                                 Icon(
                                     painter = painterResource(
-                                        id =
-                                        if (state.filters.showReadItems) {
-                                            R.drawable.ic_show_unread
-                                        } else {
-                                            R.drawable.ic_show_read
-                                        }
+                                        id = R.drawable.ic_list_alt_check
                                     ),
                                     contentDescription = null,
                                 )
                             }
 
-                            IconButton(
+                            BorderedIconButton (
                                 onClick = { screenModel.refreshTimeline(context) }
                             ) {
                                 Icon(

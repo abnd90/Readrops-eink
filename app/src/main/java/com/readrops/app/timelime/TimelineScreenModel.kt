@@ -81,7 +81,7 @@ class TimelineScreenModel(
                     .collect { foldersAndFeeds ->
                         _timelineState.update {
                             it.copy(
-                                foldersAndFeeds = foldersAndFeeds
+                                foldersAndFeeds = foldersAndFeeds,
                             )
                         }
                     }

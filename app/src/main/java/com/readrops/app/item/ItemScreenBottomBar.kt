@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,6 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.readrops.app.R
+import com.readrops.app.util.components.BorderedIconButton
+import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.theme.spacing
 
 data class BottomBarState(
@@ -60,7 +61,7 @@ fun ItemScreenBottomBar(
             horizontalArrangement = Arrangement.SpaceAround,
             modifier = Modifier.padding(MaterialTheme.spacing.shortSpacing)
         ) {
-            IconButton(
+            BorderedIconButton (
                 onClick = { onChangeReadState(!state.isRead) }
             ) {
                 Icon(
@@ -74,7 +75,7 @@ fun ItemScreenBottomBar(
                 )
             }
 
-            IconButton(
+            BorderedIconButton (
                 onClick = { onChangeStarState(!state.isStarred) }
             ) {
                 Icon(
@@ -88,7 +89,7 @@ fun ItemScreenBottomBar(
                 )
             }
 
-            IconButton(
+            BorderedIconButton (
                 onClick = onShare
             ) {
                 Icon(
@@ -98,7 +99,7 @@ fun ItemScreenBottomBar(
                 )
             }
 
-            IconButton(
+            BorderedIconButton (
                 onClick = onOpenUrl
             ) {
                 Icon(
@@ -108,36 +109,27 @@ fun ItemScreenBottomBar(
                 )
             }
 
-            IconButton(
-                onClick = {
-                    when (readabilityState) {
-                        ReadabilityState.OFF -> onReadability(true)
-                        ReadabilityState.ON -> onReadability(false)
-                        ReadabilityState.IN_PROGRESS -> { /* Do nothing */ }
-                    }
+            BorderedToggleIconButton (
+                onCheckedChange = {
+                    checked ->
+                        onReadability(checked)
                 },
-                enabled = readabilityState != ReadabilityState.IN_PROGRESS
+                enabled = readabilityState != ReadabilityState.IN_PROGRESS,
+                checked = readabilityState == ReadabilityState.ON
             ) {
                 when (readabilityState) {
-                    ReadabilityState.OFF -> {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_reader_mode),
-                            tint = tintOff,
-                            contentDescription = null
-                        )
-                    }
-                    ReadabilityState.ON -> {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_reader_mode),
-                            tint = tint,
-                            contentDescription = null
-                        )
-                    }
                     ReadabilityState.IN_PROGRESS -> {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             color = MaterialTheme.colorScheme.primary,
                             strokeWidth = 2.dp
+                        )
+                    }
+                    else -> {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_reader_mode),
+                            tint = tint,
+                            contentDescription = null
                         )
                     }
                 }

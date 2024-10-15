@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
@@ -45,6 +44,7 @@ import com.readrops.app.R
 import com.readrops.app.more.preferences.PreferencesScreen
 import com.readrops.app.timelime.TimelineScreenModel
 import com.readrops.app.timelime.TimelineState
+import com.readrops.app.util.components.BorderedIconButton
 import com.readrops.app.util.components.FeedIcon
 import com.readrops.app.util.theme.spacing
 import com.readrops.db.entities.Feed
@@ -72,14 +72,14 @@ fun TimelineDrawer(
                     TopAppBar(
                         title = {},
                         navigationIcon = {
-                            IconButton(
+                            BorderedIconButton (
                                 onClick = { screenModel.closeDrawer() },
                             ) {
                                 Icon(Icons.Filled.ArrowBack, contentDescription = "Close Drawer")
                             }
                         },
                         actions = {
-                            IconButton(onClick = {
+                            BorderedIconButton (onClick = {
                                 screenModel.closeDrawer()
                                 navigator.push(PreferencesScreen()) }) {
                                 Icon(

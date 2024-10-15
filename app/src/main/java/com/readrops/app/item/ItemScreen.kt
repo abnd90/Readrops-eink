@@ -72,6 +72,8 @@ import com.readrops.app.item.view.ItemLinearLayout
 import com.readrops.app.item.view.ItemWebView
 import com.readrops.app.util.Preferences
 import com.readrops.app.util.components.AndroidScreen
+import com.readrops.app.util.components.BorderedIconButton
+import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import com.readrops.app.util.components.FeedIcon
 import com.readrops.app.util.components.IconText
@@ -262,11 +264,11 @@ class ItemScreen(
                                     BackgroundTitle(itemWithFeed = itemWithFeed)
                                 } else {
                                     Box {
-                                        IconButton(
+                                        BorderedIconButton (
                                             onClick = { navigator.pop() },
                                             modifier = Modifier
                                                 .statusBarsPadding()
-                                                .align(Alignment.TopStart)
+                                                .align(Alignment.CenterStart)
                                         ) {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Default.ArrowBack,
@@ -274,11 +276,13 @@ class ItemScreen(
                                             )
                                         }
 
-                                        IconButton(
-                                            onClick = { showTextFormatPopup = !showTextFormatPopup },
+                                        BorderedToggleIconButton (
+                                            checked = showTextFormatPopup,
+                                            onCheckedChange = { checked -> showTextFormatPopup = checked},
                                             modifier = Modifier
                                                 .statusBarsPadding()
-                                                .align(Alignment.TopEnd)
+                                                .align(Alignment.CenterEnd),
+                                            drawBottomTriangle = true
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Filled.TextFormat,
