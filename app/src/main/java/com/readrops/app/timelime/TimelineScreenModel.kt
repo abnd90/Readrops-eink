@@ -171,7 +171,7 @@ class TimelineScreenModel(
                     emptyFlow()
                 },
                 isAccountLocal = currentAccount!!.isLocal,
-                scrollToTop = true,
+                currentPage = 0
             )
         }
 
@@ -216,8 +216,8 @@ class TimelineScreenModel(
                         _timelineState.update {
                             it.copy(
                                 isRefreshing = false,
-                                scrollToTop = true,
-                                localSyncErrors = errors?.ifEmpty { null }
+                                localSyncErrors = errors?.ifEmpty { null },
+                                currentPage = 0
                             )
                         }
 
@@ -391,7 +391,8 @@ class TimelineScreenModel(
 
             _timelineState.update {
                 it.copy(
-                    filters = it.filters.copy(showReadItems = showReadItems)
+                    filters = it.filters.copy(showReadItems = showReadItems),
+                    currentPage = 0
                 )
             }
         }
@@ -419,10 +420,6 @@ class TimelineScreenModel(
         }
     }
 
-    fun resetScrollToTop() {
-        _timelineState.update { it.copy(scrollToTop = false) }
-    }
-
     fun resetSyncError() {
         _timelineState.update { it.copy(syncError = null) }
     }
@@ -446,7 +443,6 @@ data class TimelineState(
     val unreadNewItemsCount: Int = 0,
     val feedCount: Int = 0,
     val feedMax: Int = 0,
-    val scrollToTop: Boolean = false,
     val localSyncErrors: ErrorResult? = null,
     val syncError: Exception? = null,
     val filters: QueryFilters = QueryFilters(),

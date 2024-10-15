@@ -28,7 +28,6 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -140,14 +139,6 @@ object TimelineTab : Tab {
                 && preferences.displayNotificationsPermission
             ) {
                 launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        LaunchedEffect(state.scrollToTop) {
-            if (state.scrollToTop) {
-                lazyListState.scrollToItem(0)
-                screenModel.resetScrollToTop()
-                topAppBarState.contentOffset = 0f
             }
         }
 
@@ -474,7 +465,7 @@ object TimelineTab : Tab {
                                     ) {
                                         val buttonWidth = 50.dp
 
-                                        IconButton(
+                                        BorderedIconButton (
                                             modifier = Modifier.width(buttonWidth),
                                             onClick = {
                                                 screenModel.setCurrentTimelinePage(0)
@@ -486,7 +477,7 @@ object TimelineTab : Tab {
                                                 contentDescription = "First page"
                                             )
                                         }
-                                        IconButton(
+                                        BorderedIconButton (
                                             modifier = Modifier.width(buttonWidth),
                                             onClick = {
                                                 prevListPage()
@@ -510,7 +501,7 @@ object TimelineTab : Tab {
                                             )
                                             Text(" / $totalPages")
                                         }
-                                        IconButton(
+                                        BorderedIconButton(
                                             modifier = Modifier.width(buttonWidth),
                                             onClick = {
                                                 nextListPage()
@@ -522,7 +513,7 @@ object TimelineTab : Tab {
                                                 contentDescription = "Next page"
                                             )
                                         }
-                                        IconButton(
+                                        BorderedIconButton (
                                             modifier = Modifier.width(buttonWidth),
                                             onClick = {
                                                 screenModel.setCurrentTimelinePage(totalPages - 1)

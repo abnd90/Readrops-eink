@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -53,11 +56,18 @@ fun BorderedIconButton(
                 enabled = enabled,
                 role = Role.Button,
                 interactionSource = interactionSource,
-                indication = BorderIndication()
+                indication = BorderIndication
             ),
         contentAlignment = Alignment.Center
     ) {
-        content()
+        val contentAlpha = if (enabled) 1.0f else 0.38f
+        CompositionLocalProvider(
+            LocalContentColor provides MaterialTheme.colorScheme.onSurface.copy(
+                alpha = contentAlpha
+            )
+        ) {
+            content()
+        }
     }
 }
 
@@ -98,7 +108,7 @@ fun BorderedToggleIconButton(
                 enabled = enabled,
                 role = Role.Checkbox,
                 interactionSource = interactionSource,
-                indication = BorderIndication()
+                indication = BorderIndication
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -158,13 +168,11 @@ private class BorderNode(private val interactionSource: InteractionSource) :
     }
 }
 
-object BorderIndication {
-    operator fun invoke(): IndicationNodeFactory = object : IndicationNodeFactory {
-        override fun create(interactionSource: InteractionSource): DelegatableNode {
-            return BorderNode(interactionSource)
-        }
-
-        override fun equals(other: Any?): Boolean = other === this
-        override fun hashCode() = System.identityHashCode(this)
+object BorderIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode {
+        return BorderNode(interactionSource)
     }
+
+    override fun equals(other: Any?): Boolean = other === this
+    override fun hashCode() = System.identityHashCode(this)
 }

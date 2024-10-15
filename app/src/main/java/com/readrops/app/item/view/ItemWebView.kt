@@ -3,9 +3,9 @@ package com.readrops.app.item.view
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.ui.graphics.Color
@@ -21,85 +21,13 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/*
-@SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
-class ItemWebView(
-    context: Context,
-    onUrlClick: (String) -> Unit,
-    onImageLongPress: (String) -> Unit,
-    attrs: AttributeSet? = null,
-) : WebView(context, attrs) {
-
-    init {
-        settings.javaScriptEnabled = true
-        settings.builtInZoomControls = true
-        settings.displayZoomControls = false
-        settings.setSupportZoom(false)
-        isVerticalScrollBarEnabled = false
-
-        webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                url?.let { onUrlClick(it) }
-                return true
-            }
-        }
-
-        setOnLongClickListener {
-            val type = hitTestResult.type
-            if (type == HitTestResult.IMAGE_TYPE || type == HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
-                hitTestResult.extra?.let { onImageLongPress(it) }
-            }
-
-            false
-        }
-    }
-
-    fun loadText(
-        itemWithFeed: ItemWithFeed,
-        accentColor: Color,
-        backgroundColor: Color,
-        onBackgroundColor: Color
-    ) {
-        val direction = if (Locale.getDefault().layoutDirection == LAYOUT_DIRECTION_LTR) {
-            "ltr"
-        } else {
-            "rtl"
-        }
-
-        val string = context.getString(
-            R.string.webview_html_template,
-            Utils.getCssColor(accentColor.toArgb()),
-            Utils.getCssColor(onBackgroundColor.toArgb()),
-            Utils.getCssColor(backgroundColor.toArgb()),
-            direction,
-            formatText(itemWithFeed)
-        )
-
-        loadDataWithBaseURL(
-            "file:///android_asset/",
-            string,
-            "text/html; charset=utf-8",
-            "UTF-8",
-            null
-        )
-    }
-
-    private fun formatText(itemWithFeed: ItemWithFeed): String {
-        return if (itemWithFeed.item.text != null) {
-            val document = if (itemWithFeed.websiteUrl != null) Jsoup.parse(
-                Parser.unescapeEntities(itemWithFeed.item.text, false), itemWithFeed.websiteUrl
-            ) else Jsoup.parse(
-                Parser.unescapeEntities(itemWithFeed.item.text, false)
-            )
-
-            document.select("div,span").forEach { it.clearAttributes() }
-            return document.body().html()
-        } else {
-            ""
-        }
+class WebAppInterface(private val onPageCountUpdate: (Int) -> Unit){
+    @JavascriptInterface
+    fun setPageCount(pageCount: Int) {
+        onPageCountUpdate(pageCount)
     }
 }
-*/
+
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class ItemWebView(
     context: Context,
@@ -130,7 +58,6 @@ class ItemWebView(
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                injectPaginationJS()
             }
         }
 
@@ -170,6 +97,12 @@ class ItemWebView(
                     return false
                 }
             })
+
+        addJavascriptInterface(WebAppInterface { pageCount ->
+            totalPages = pageCount
+            //goToPage(currentPage)
+            onPageUpdate()
+        }, "Android")
     }
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -219,6 +152,8 @@ class ItemWebView(
         } else {
             context.getString(R.string.read_time_lower_than_1)
         }
+
+        // TODO: Find or write a templating library
         val string = context.getString(
             R.string.webview_html_template,
             Utils.getCssColor(accentColor.toArgb()),
@@ -235,6 +170,8 @@ class ItemWebView(
             "${lineSizeMultiplier}em",
         )
 
+        // TODO: Retain currentPage and scroll to that page.
+        currentPage = 0
         loadDataWithBaseURL(
             "file:///android_asset/",
             string,
@@ -258,43 +195,6 @@ class ItemWebView(
             ""
         }
     }
-
-    private fun injectPaginationJS() {
-        val js = """
-            function initialize() {  
-                var body = document.body;
-                if (body == null) {
-                    return 0
-                }
-                const contentWidth = body.scrollWidth;
-                const viewportWidth = window.innerWidth;
-                window.pageCount = Math.ceil(contentWidth / viewportWidth);
-
-                window.changePage = function (page) {
-                    if (page >= 0 && page < window.pageCount) {
-                        window.scrollTo({
-                            left: page * viewportWidth,
-                            behavior: 'instant'
-                        });
-                    }
-                }
-                changePage(${currentPage})
-                return window.pageCount;
-            }
-            initialize();
-        """
-
-        evaluateJavascript(js) { result ->
-            try {
-                totalPages = result.toInt()
-                onPageUpdate()
-                Log.d("ItemWebView", "Current page: $currentPage, Total pages: $totalPages")
-            } catch (e: Exception) {
-                Log.e("ItemWebView", "Error parsing JavaScript result", e)
-            }
-        }
-    }
-
 
     fun nextPage() {
         if (currentPage + 1 < totalPages) {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +30,8 @@ import androidx.compose.material.icons.filled.FormatAlignJustify
 import androidx.compose.material.icons.filled.TextDecrease
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.TextIncrease
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +42,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -90,6 +94,7 @@ class ItemScreen(
     private val itemId: Int,
 ) : AndroidScreen() {
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val preferences = koinInject<Preferences>()
@@ -215,33 +220,78 @@ class ItemScreen(
                     onChangeStarState = {
                         screenModel.setItemStarState(item.apply { isStarred = it })
                     },
-                    readabilityState = readabilityState,
-                    onReadability =  {
-                        showReadable ->
-                        if (showReadable && readableText.isEmpty()) {
-                            readabilityState = ReadabilityState.IN_PROGRESS
-                            screenModel.readableArticleText(itemWithFeed,
-                                { result ->
-                                    readableText = result
-                                    readabilityState = ReadabilityState.ON
-                                    refreshAndroidView = true
-                                },
-                                { error ->
-                                    readabilityState = ReadabilityState.OFF
-                                }
-                            )
-                        } else {
-                            readabilityState =
-                                if (showReadable) ReadabilityState.ON else ReadabilityState.OFF
-                            refreshAndroidView = true
-                        }
-                    }
                 )
             }
 
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) },
-                bottomBar = bottomBar
+                bottomBar = bottomBar,
+                topBar = {
+                    TopAppBar(
+                        title = {},
+                        actions = {
+                            BorderedToggleIconButton (
+                                onCheckedChange = { checked ->
+                                    if (checked && readableText.isEmpty()) {
+                                        readabilityState = ReadabilityState.IN_PROGRESS
+                                        screenModel.readableArticleText(itemWithFeed,
+                                            { result ->
+                                                readableText = result
+                                                readabilityState = ReadabilityState.ON
+                                                refreshAndroidView = true
+                                            },
+                                            { error ->
+                                                readabilityState = ReadabilityState.OFF
+                                            }
+                                        )
+                                    } else {
+                                        readabilityState =
+                                            if (checked) ReadabilityState.ON else ReadabilityState.OFF
+                                        refreshAndroidView = true
+                                    }
+                                },
+                                enabled = readabilityState != ReadabilityState.IN_PROGRESS,
+                                checked = readabilityState == ReadabilityState.ON
+                            ) {
+                                when (readabilityState) {
+                                    ReadabilityState.IN_PROGRESS -> {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                    else -> {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_reader_mode),
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                            }
+                            BorderedToggleIconButton(
+                                checked = showTextFormatPopup,
+                                onCheckedChange = { checked -> showTextFormatPopup = checked },
+                                drawBottomTriangle = true
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.TextFormat,
+                                    contentDescription = "Text Formatting"
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            BorderedIconButton (
+                                onClick = { navigator.pop() },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                    )
+                }
             ) { paddingValues ->
                 Box(
                     modifier = Modifier
@@ -259,39 +309,7 @@ class ItemScreen(
                                     currentPage = c
                                     totalPages = t
                                 }
-                            ) {
-                                if (item.imageLink != null) {
-                                    BackgroundTitle(itemWithFeed = itemWithFeed)
-                                } else {
-                                    Box {
-                                        BorderedIconButton (
-                                            onClick = { navigator.pop() },
-                                            modifier = Modifier
-                                                .statusBarsPadding()
-                                                .align(Alignment.CenterStart)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                                                contentDescription = null,
-                                            )
-                                        }
-
-                                        BorderedToggleIconButton (
-                                            checked = showTextFormatPopup,
-                                            onCheckedChange = { checked -> showTextFormatPopup = checked},
-                                            modifier = Modifier
-                                                .statusBarsPadding()
-                                                .align(Alignment.CenterEnd),
-                                            drawBottomTriangle = true
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.TextFormat,
-                                                contentDescription = "Text Formatting"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            ) {}
                         },
                         update = { linearLayout ->
                             if (refreshAndroidView) {
@@ -505,7 +523,7 @@ fun MoreOptionsPopup(
         Surface(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 56.dp, end = 8.dp)
+                .padding(top = 0.dp, end = 8.dp)
                 .border(
                     width = 1.dp,
                     color = Color.Black,

@@ -42,31 +42,31 @@
             margin:0;
         }
 
-        #article {
+        #_article {
             padding: 10%%;
             padding-top: 0px;
             padding-bottom: 0px;
         }
 
-        #article h1 {
+        #_article > h1 {
             margin-top: 10px;
             margin-bottom: 10px;
         }
 
-        #topRow {
+        #_article > #topRow {
             font-family: sans-serif !important;
         }
-        #bottomRow {
+        #_article > #bottomRow {
             display: flex;
             align-items: center;
             margin-top: 5px;
             font-family: sans-serif !important;
         }
-        #bottomRow span {
+        #_article > #bottomRow span {
             padding-left: 10px;
         }
 
-        #content {
+        #_article > #_content {
             margin-top: 30px;
             text-align: %10$s;
             font-size: %11$s;
@@ -121,37 +121,59 @@
         }
 
         blockquote {
-            margin:30px auto;
-            padding:0px 3em;
             border-left: 5px solid %1$s;
-            line-height: 1.6;
-            position: relative;
+            margin: 1.5em 10px;
+            padding: 0.5em 20px;
         }
 
         blockquote::before {
             content: \"\\201C\";
             color: %1$s;
             font-size: 4em;
-            position: absolute;
             left: 10px;
             top: -10px;
+            line-height: 0.1em;
+            margin-right: 0.25em;
+            vertical-align: -0.4em;
         }
 
-        blockquote::after{
-            content: \'\';
+        blockquote p:first-child {
+            display: inline;
         }
         </style>
     </head>
 
     <body dir=\"%4$s\">
-        <div id="article">
+        <script>
+            function initialize() {
+                var body = document.body;
+                var contentWidth = body.scrollWidth;
+                var viewportWidth = window.innerWidth;
+
+                window.pageCount = Math.ceil(contentWidth / viewportWidth);
+                window.changePage = function(page) {
+                    if (page >= 0 && page < window.pageCount) {
+                        window.scrollTo({
+                            left: page * viewportWidth,
+                            behavior: \'instant\'
+                        });
+                    }
+                };
+                Android.setPageCount(window.pageCount);
+            };
+
+            document.addEventListener(\'DOMContentLoaded\', function() {
+                initialize();
+            });
+        </script>
+        <div id="_article">
             <div id="topRow">%7$s</div>
             <h1>%6$s</h1>
             <div id="bottomRow>
                 <img width="24px" height="24px" src="%8$s" />
                 <span>%9$s</span>
             </div>
-            <div id="content">
+            <div id="_content">
                 %5$s
             </div>
         </div>

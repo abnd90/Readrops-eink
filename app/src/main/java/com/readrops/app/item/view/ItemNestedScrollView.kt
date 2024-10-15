@@ -216,12 +216,6 @@ class ItemLinearLayout(
         webViewParams.weight = 1f
         webView.layoutParams = webViewParams
 
-        if (useBackgroundTitle) {
-            val density = resources.displayMetrics.density
-            val dpAsPixels = (8 * density + 0.5f).toInt()
-            composeView.setPadding(0, 0, 0, dpAsPixels)
-        }
-
         addView(composeView)
         addView(webView)
 
