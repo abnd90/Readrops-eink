@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.readrops.app.R
+import com.readrops.app.util.components.FeedIcon
 import com.readrops.app.util.theme.ShortSpacer
 import com.readrops.app.util.theme.spacing
 import com.readrops.db.pojo.ItemWithFeed
@@ -276,12 +277,12 @@ fun TimelineItemHeader(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
-            /*
             FeedIcon(
                 iconUrl = feedIconUrl,
                 name = feedName
             )
-             */
+
+            ShortSpacer()
 
             Column {
                 Text(

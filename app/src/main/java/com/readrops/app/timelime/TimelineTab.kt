@@ -389,58 +389,61 @@ object TimelineTab : Tab {
                                                 minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerColumn)) / (2 * itemsPerColumn)
                                             totalPages =
                                                 (items.itemCount + itemsPerColumn - 1) / itemsPerColumn
-                                        }
-                                        items(
-                                            count = totalPages,
-                                            key = { it } // Use the index as the key
-                                        ) { pageIndex ->
-                                            Column(
-                                                modifier = Modifier.fillParentMaxSize(),
-                                                verticalArrangement = Arrangement.spacedBy(actualTimelinePadding)
-                                            ) {
-                                                repeat(itemsPerColumn) { columnIndex ->
-                                                    val itemIndex = pageIndex * itemsPerColumn + columnIndex
-                                                    if (itemIndex < items.itemCount) {
-                                                        val itemWithFeed = items[itemIndex]
-                                                        if (itemWithFeed != null) {
-                                                            TimelineItem(
-                                                                itemWithFeed = itemWithFeed,
-                                                                onClick = {
-                                                                    screenModel.setItemRead(
-                                                                        itemWithFeed.item
-                                                                    )
-                                                                    navigator.push(
-                                                                        ItemScreen(
-                                                                            itemId = itemWithFeed.item.id,
+                                            items(
+                                                count = totalPages,
+                                                key = { it } // Use the index as the key
+                                            ) { pageIndex ->
+                                                Column(
+                                                    modifier = Modifier.fillParentMaxSize(),
+                                                    verticalArrangement = Arrangement.spacedBy(
+                                                        actualTimelinePadding
+                                                    )
+                                                ) {
+                                                    repeat(itemsPerColumn) { columnIndex ->
+                                                        val itemIndex =
+                                                            pageIndex * itemsPerColumn + columnIndex
+                                                        if (itemIndex < items.itemCount) {
+                                                            val itemWithFeed = items[itemIndex]
+                                                            if (itemWithFeed != null) {
+                                                                TimelineItem(
+                                                                    itemWithFeed = itemWithFeed,
+                                                                    onClick = {
+                                                                        screenModel.setItemRead(
+                                                                            itemWithFeed.item
+                                                                        )
+                                                                        navigator.push(
+                                                                            ItemScreen(
+                                                                                itemId = itemWithFeed.item.id,
+                                                                            )
+                                                                        )
+                                                                    },
+                                                                    onFavorite = {
+                                                                        screenModel.updateStarState(
+                                                                            itemWithFeed.item
+                                                                        )
+                                                                    },
+                                                                    onShare = {
+                                                                        screenModel.shareItem(
+                                                                            itemWithFeed.item,
+                                                                            context
+                                                                        )
+                                                                    },
+                                                                    onSetReadState = {
+                                                                        screenModel.updateItemReadState(
+                                                                            itemWithFeed.item
+                                                                        )
+                                                                    },
+                                                                    size = preferences.itemSize,
+                                                                    modifier = Modifier.fillMaxWidth()
+                                                                )
+
+                                                                if (columnIndex != itemsPerColumn - 1) {
+                                                                    HorizontalDivider(
+                                                                        modifier = Modifier.padding(
+                                                                            horizontal = MaterialTheme.spacing.shortSpacing
                                                                         )
                                                                     )
-                                                                },
-                                                                onFavorite = {
-                                                                    screenModel.updateStarState(
-                                                                        itemWithFeed.item
-                                                                    )
-                                                                },
-                                                                onShare = {
-                                                                    screenModel.shareItem(
-                                                                        itemWithFeed.item,
-                                                                        context
-                                                                    )
-                                                                },
-                                                                onSetReadState = {
-                                                                    screenModel.updateItemReadState(
-                                                                        itemWithFeed.item
-                                                                    )
-                                                                },
-                                                                size = preferences.itemSize,
-                                                                modifier = Modifier.fillMaxWidth()
-                                                            )
-
-                                                            if (columnIndex != itemsPerColumn - 1) {
-                                                                HorizontalDivider(
-                                                                    modifier = Modifier.padding(
-                                                                        horizontal = MaterialTheme.spacing.shortSpacing
-                                                                    )
-                                                                )
+                                                                }
                                                             }
                                                         }
                                                     }

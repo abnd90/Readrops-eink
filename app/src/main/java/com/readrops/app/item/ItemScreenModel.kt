@@ -115,9 +115,10 @@ class ItemScreenModel(
         }
     }
 
-    fun setItemReadState(item: Item) {
+    fun setItemReadState(item: Item, function: () -> Unit) {
         screenModelScope.launch(dispatcher) {
             repository.setItemReadState(item)
+            function()
         }
     }
 

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Stable
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.work.workDataOf
 import cafe.adriel.voyager.core.model.screenModelScope
@@ -57,6 +58,8 @@ class TimelineScreenModel(
     val listIndexState = _listIndexState.asStateFlow()
 
     private val filters = MutableStateFlow(_timelineState.value.filters)
+
+    private var pagingSource: PagingSource<*, ItemWithFeed>? = null
 
     init {
         screenModelScope.launch(dispatcher) {
@@ -158,7 +161,7 @@ class TimelineScreenModel(
                 pageSize = 50,
             ),
             pagingSourceFactory = {
-                database.itemDao().selectAll(query)
+                database.itemDao().selectAll(query).also { pagingSource = it }
             },
         ).flow
         .cachedIn(screenModelScope)
@@ -432,6 +435,10 @@ class TimelineScreenModel(
         screenModelScope.launch {
             preferences.displayNotificationsPermission.write(false)
         }
+    }
+
+    fun invalidatePagingSource() {
+        pagingSource?.invalidate()
     }
 }
 

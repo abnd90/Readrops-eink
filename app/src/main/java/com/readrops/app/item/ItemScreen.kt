@@ -65,6 +65,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.readrops.app.R
 import com.readrops.app.item.view.ItemLinearLayout
 import com.readrops.app.item.view.ItemWebView
+import com.readrops.app.timelime.TimelineScreenModel
 import com.readrops.app.util.Preferences
 import com.readrops.app.util.components.AndroidScreen
 import com.readrops.app.util.components.BorderedIconButton
@@ -89,6 +90,7 @@ class ItemScreen(
         val screenModel =
             getScreenModel<ItemScreenModel>(parameters = { parametersOf(itemId) })
         val state by screenModel.state.collectAsStateWithLifecycle()
+        val timelineScreenModel: TimelineScreenModel = koinInject()
 
         val primaryColor = MaterialTheme.colorScheme.primary
         val backgroundColor = MaterialTheme.colorScheme.background
@@ -190,7 +192,8 @@ class ItemScreen(
                     onShare = { screenModel.shareItem(item, context) },
                     onOpenUrl = { openUrl(item.link!!) },
                     onChangeReadState = {
-                        screenModel.setItemReadState(item.apply { isRead = it })
+                        screenModel.setItemReadState(item.apply { isRead = it }
+                        ) { timelineScreenModel.invalidatePagingSource() }
                     },
                     onChangeStarState = {
                         screenModel.setItemStarState(item.apply { isStarred = it })
