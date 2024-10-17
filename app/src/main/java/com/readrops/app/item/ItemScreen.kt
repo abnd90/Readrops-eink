@@ -9,18 +9,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -53,15 +49,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -70,7 +62,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import coil.compose.AsyncImage
 import com.readrops.app.R
 import com.readrops.app.item.view.ItemLinearLayout
 import com.readrops.app.item.view.ItemWebView
@@ -79,16 +70,8 @@ import com.readrops.app.util.components.AndroidScreen
 import com.readrops.app.util.components.BorderedIconButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
-import com.readrops.app.util.components.FeedIcon
-import com.readrops.app.util.components.IconText
-import com.readrops.app.util.theme.MediumSpacer
-import com.readrops.app.util.theme.ShortSpacer
-import com.readrops.app.util.theme.spacing
-import com.readrops.db.pojo.ItemWithFeed
-import com.readrops.db.util.DateUtils
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
-import kotlin.math.roundToInt
 
 class ItemScreen(
     private val itemId: Int,
@@ -112,8 +95,7 @@ class ItemScreen(
         val onBackgroundColor = MaterialTheme.colorScheme.onBackground
 
         val snackbarHostState = remember { SnackbarHostState() }
-        val isScrollable by remember { mutableStateOf(true) }
-        var refreshAndroidView by remember { mutableStateOf(true) }
+        var refreshAndroidView by remember { mutableStateOf(false) }
 
         // https://developer.android.com/develop/ui/compose/touch-input/pointer-input/scroll#parent-compose-child-view
         val bottomBarHeight = 64.dp
@@ -202,14 +184,7 @@ class ItemScreen(
                         .navigationBarsPadding()
                         .height(bottomBarHeight)
                         .offset {
-                            if (isScrollable) {
-                                IntOffset(
-                                    x = 0,
-                                    y = -bottomBarOffsetHeightPx.floatValue.roundToInt()
-                                )
-                            } else {
-                                IntOffset(0, 0)
-                            }
+                            IntOffset(0, 0)
                         },
                     pageInfo = Pair(currentPage, totalPages),
                     onShare = { screenModel.shareItem(item, context) },
@@ -354,143 +329,6 @@ class ItemScreen(
         } else {
             CenteredProgressIndicator()
         }
-    }
-}
-
-@Composable
-fun BackgroundTitle(
-    itemWithFeed: ItemWithFeed,
-) {
-    val navigator = LocalNavigator.currentOrThrow
-
-    val onScrimColor = Color.White.copy(alpha = 0.85f)
-    val accentColor = if (itemWithFeed.color != 0) {
-        Color(itemWithFeed.color)
-    } else {
-        onScrimColor
-    }
-
-    Surface(
-        shape = RoundedCornerShape(
-            bottomStart = 24.dp,
-            bottomEnd = 24.dp
-        ),
-        modifier = Modifier.height(IntrinsicSize.Max)
-    ) {
-        AsyncImage(
-            model = itemWithFeed.item.imageLink,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            error = painterResource(id = R.drawable.ic_broken_image),
-            modifier = Modifier
-                .fillMaxSize()
-        )
-
-        Surface(
-            color = Color.Black.copy(alpha = 0.6f),
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            Box {
-                IconButton(
-                    onClick = { navigator.pop() },
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .align(Alignment.TopStart)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-                }
-
-                SimpleTitle(
-                    itemWithFeed = itemWithFeed,
-                    titleColor = onScrimColor,
-                    accentColor = accentColor,
-                    baseColor = onScrimColor,
-                    bottomPadding = true
-                )
-            }
-        }
-    }
-
-    MediumSpacer()
-}
-
-@Composable
-fun SimpleTitle(
-    itemWithFeed: ItemWithFeed,
-    titleColor: Color,
-    accentColor: Color,
-    baseColor: Color,
-    bottomPadding: Boolean,
-) {
-    val item = itemWithFeed.item
-    val spacing = MaterialTheme.spacing.mediumSpacing
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = spacing,
-                end = spacing,
-                top = spacing,
-                bottom = if (bottomPadding) spacing else 0.dp
-            )
-    ) {
-        FeedIcon(
-            iconUrl = itemWithFeed.feedIconUrl,
-            name = itemWithFeed.feedName,
-            size = 48.dp,
-            modifier = Modifier.clip(CircleShape)
-        )
-
-        ShortSpacer()
-
-        Text(
-            text = itemWithFeed.feedName,
-            style = MaterialTheme.typography.labelLarge,
-            color = baseColor,
-            textAlign = TextAlign.Center
-        )
-
-        ShortSpacer()
-
-        Text(
-            text = item.title!!,
-            style = MaterialTheme.typography.headlineMedium,
-            color = titleColor,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-
-        if (item.author != null) {
-            ShortSpacer()
-
-            IconText(
-                icon = painterResource(id = R.drawable.ic_person),
-                text = itemWithFeed.item.author!!,
-                style = MaterialTheme.typography.labelMedium,
-                color = baseColor,
-                tint = accentColor
-            )
-        }
-
-        ShortSpacer()
-
-        val readTime = if (item.readTime > 1) {
-            stringResource(id = R.string.read_time, item.readTime.roundToInt())
-        } else {
-            stringResource(id = R.string.read_time_lower_than_1)
-        }
-        Text(
-            text = "${DateUtils.formattedDate(item.pubDate!!)} ${stringResource(id = R.string.interpoint)} $readTime",
-            style = MaterialTheme.typography.labelMedium,
-            color = baseColor
-        )
     }
 }
 
