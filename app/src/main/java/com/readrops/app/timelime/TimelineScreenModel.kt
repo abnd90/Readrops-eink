@@ -52,14 +52,13 @@ class TimelineScreenModel(
     private val _timelineState = MutableStateFlow(TimelineState())
     val timelineState = _timelineState.asStateFlow()
 
-    // separate this from main Timeline state for performances
-    // as it will be very often updated
-    private val _listIndexState = MutableStateFlow(0)
-    val listIndexState = _listIndexState.asStateFlow()
-
     private val filters = MutableStateFlow(_timelineState.value.filters)
 
-    private var pagingSource: PagingSource<*, ItemWithFeed>? = null
+    private var pagingSource: PagingSource<Int, ItemWithFeed>? = null
+    // To hold item read state updates in ItemScreen so that the timeline can
+    // reflect the state change. Item state updates do not invalidate PagingSource (by design)
+    // but we still need to fix the timeline.
+    var itemReadStateUpdates = mutableMapOf<Int, Boolean>()
 
     init {
         screenModelScope.launch(dispatcher) {
@@ -158,10 +157,13 @@ class TimelineScreenModel(
 
         val pager = Pager(
             config = PagingConfig(
-                pageSize = 50,
+                pageSize = 10,
             ),
             pagingSourceFactory = {
-                database.itemDao().selectAll(query).also { pagingSource = it }
+                database.itemDao().selectAll(query).also {
+                    pagingSource = it
+                    itemReadStateUpdates.clear()
+                }
             },
         ).flow
         .cachedIn(screenModelScope)
@@ -178,7 +180,6 @@ class TimelineScreenModel(
             )
         }
 
-        _listIndexState.update { 0 }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -375,6 +376,7 @@ class TimelineScreenModel(
                     MainFilter.NEW -> repository?.setAllNewItemsRead()
                 }
             }
+            invalidatePagingSource()
         }
     }
 
@@ -427,17 +429,21 @@ class TimelineScreenModel(
         _timelineState.update { it.copy(syncError = null) }
     }
 
-    fun updateLastFirstVisibleItemIndex(index: Int) {
-        _listIndexState.update { index }
-    }
-
     fun disableDisplayNotificationsPermission() {
         screenModelScope.launch {
             preferences.displayNotificationsPermission.write(false)
         }
     }
 
-    fun invalidatePagingSource() {
+    fun itemReadStateChangedInItemScreen(itemId: Int, readState: Boolean) {
+        itemReadStateUpdates[itemId] = readState
+    }
+
+    fun getItemScreenReadStateUpdate(itemId: Int): Boolean? {
+        return getAndRemove(itemReadStateUpdates, itemId)
+    }
+
+    private fun invalidatePagingSource() {
         pagingSource?.invalidate()
     }
 }
@@ -482,4 +488,12 @@ sealed interface DialogState {
     data object ConfirmDialog : DialogState
     data object FilterSheet : DialogState
     class ErrorList(val errorResult: ErrorResult) : DialogState
+}
+
+fun <K, V> getAndRemove(map: MutableMap<K, V>, key: K): V? {
+    return if (map.containsKey(key)) {
+        map.remove(key)  // Removes the key and returns the value
+    } else {
+        null  // If key doesn't exist, return null
+    }
 }

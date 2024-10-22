@@ -1,5 +1,6 @@
 package com.readrops.app.util.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.border
@@ -8,11 +9,17 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -133,6 +140,63 @@ fun BorderedToggleIconButton(
             }
         }
     }
+}
+
+@Composable
+fun BorderedTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+    content: @Composable () -> Unit
+) {
+
+    Surface(
+        modifier = modifier
+            .defaultMinSize(
+                minWidth = ButtonDefaults.MinWidth,
+                minHeight = ButtonDefaults.MinHeight
+            )
+            .clickable(
+                onClick = onClick,
+                enabled = enabled,
+                role = Role.Button,
+                interactionSource = interactionSource,
+                indication = BorderIndication
+            ),
+        shape = RoundedCornerShape(4.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, Color.Black),
+    ) {
+        CompositionLocalProvider(LocalContentColor provides Color.Black) {
+            ProvideTextStyle(value = MaterialTheme.typography.labelMedium) {
+                Box(
+                    modifier = Modifier.padding(contentPadding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    content()
+                }
+            }
+        }
+    }
+    /*
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color.Black
+        ),
+        border = BorderStroke(1.dp, Color.Black),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+        elevation = null, // This removes the elevation (shadow) effect
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        content()
+    }
+     */
 }
 
 private class BorderNode(private val interactionSource: InteractionSource) :

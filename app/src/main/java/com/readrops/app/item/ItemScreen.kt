@@ -5,12 +5,12 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -22,14 +22,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DensityLarge
 import androidx.compose.material.icons.filled.DensitySmall
-import androidx.compose.material.icons.filled.FormatAlignJustify
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.TextDecrease
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.TextIncrease
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -38,12 +38,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,13 +51,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -66,9 +67,11 @@ import com.readrops.app.R
 import com.readrops.app.item.view.ItemLinearLayout
 import com.readrops.app.item.view.ItemWebView
 import com.readrops.app.timelime.TimelineScreenModel
+import com.readrops.app.util.FontPreference
 import com.readrops.app.util.Preferences
 import com.readrops.app.util.components.AndroidScreen
 import com.readrops.app.util.components.BorderedIconButton
+import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import org.koin.compose.koinInject
@@ -76,6 +79,7 @@ import org.koin.core.parameter.parametersOf
 
 class ItemScreen(
     private val itemId: Int,
+    private val itemListIndex: Int?,
 ) : AndroidScreen() {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -84,13 +88,15 @@ class ItemScreen(
         val preferences = koinInject<Preferences>()
 
         val context = LocalContext.current
-        val density = LocalDensity.current
         val navigator = LocalNavigator.currentOrThrow
 
         val screenModel =
             getScreenModel<ItemScreenModel>(parameters = { parametersOf(itemId) })
         val state by screenModel.state.collectAsStateWithLifecycle()
         val timelineScreenModel: TimelineScreenModel = koinInject()
+        val timelineState by
+            timelineScreenModel.timelineState.collectAsStateWithLifecycle()
+        val timelineListItems = timelineState.itemState.collectAsLazyPagingItems()
 
         val primaryColor = MaterialTheme.colorScheme.primary
         val backgroundColor = MaterialTheme.colorScheme.background
@@ -101,22 +107,12 @@ class ItemScreen(
 
         // https://developer.android.com/develop/ui/compose/touch-input/pointer-input/scroll#parent-compose-child-view
         val bottomBarHeight = 64.dp
-        val bottomBarOffsetHeightPx = remember { mutableFloatStateOf(0f) }
 
         var showTextFormatPopup by remember { mutableStateOf(false) }
         var readabilityState by remember { mutableStateOf(ReadabilityState.OFF) }
         var readableText by remember { mutableStateOf("") }
 
-        val itemJustifyText by preferences.itemJustifyText.flow.collectAsState(initial=false)
-        LaunchedEffect(itemJustifyText) {
-            refreshAndroidView = true
-        }
-        val itemTextSizeMultiplier by preferences.itemTextSizeMultiplier.flow.collectAsState(initial=1.0f)
-        LaunchedEffect(itemTextSizeMultiplier) {
-            refreshAndroidView = true
-        }
-        val itemLineSizeMultiplier by preferences.itemLineSizeMultiplier.flow.collectAsState(initial=1.0f)
-        LaunchedEffect(itemLineSizeMultiplier) {
+        LaunchedEffect(state.formatSettings) {
             refreshAndroidView = true
         }
 
@@ -145,11 +141,7 @@ class ItemScreen(
             val itemWithFeed = state.itemWithFeed!!
             val item = itemWithFeed.item
 
-            val accentColor = if (itemWithFeed.color != 0) {
-                Color(itemWithFeed.color)
-            } else {
-                primaryColor
-            }
+            val accentColor = primaryColor
 
             val colorScheme = when (state.theme) {
                 "light" -> CustomTabsIntent.COLOR_SCHEME_LIGHT
@@ -192,13 +184,32 @@ class ItemScreen(
                     onShare = { screenModel.shareItem(item, context) },
                     onOpenUrl = { openUrl(item.link!!) },
                     onChangeReadState = {
-                        screenModel.setItemReadState(item.apply { isRead = it }
-                        ) { timelineScreenModel.invalidatePagingSource() }
+                        if (itemListIndex != null &&
+                            timelineListItems[itemListIndex]?.item?.id == itemId) {
+                            timelineListItems[itemListIndex]!!.item.isRead = it
+                        }
+                        screenModel.setItemReadState(item.apply { isRead = it })
                     },
                     onChangeStarState = {
                         screenModel.setItemStarState(item.apply { isStarred = it })
                     },
                 )
+            }
+            val replaceWithDeltaItem = { delta : Int ->
+                if (itemListIndex != null) {
+                    val newIndex = itemListIndex + delta
+                    if ((delta < 0 && newIndex >= 0)
+                        || (delta > 0 && newIndex < timelineListItems.itemCount)) {
+                        val newItemWithFeed = timelineListItems[newIndex]
+                        timelineScreenModel.setItemRead(newItemWithFeed!!.item)
+                        navigator.replace(
+                            ItemScreen(
+                                newItemWithFeed!!.item.id,
+                                newIndex
+                            )
+                        )
+                    }
+                }
             }
 
             Scaffold(
@@ -257,6 +268,31 @@ class ItemScreen(
                                     contentDescription = "Text Formatting"
                                 )
                             }
+                            if (itemListIndex != null &&
+                                timelineListItems[itemListIndex]?.item?.id == itemId) {
+                                BorderedIconButton(
+                                    enabled = (itemListIndex > 0),
+                                    onClick = {
+                                       replaceWithDeltaItem(-1)
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.SkipPrevious,
+                                        contentDescription = "Previous Article"
+                                    )
+                                }
+                                BorderedIconButton(
+                                    enabled = (itemListIndex < timelineListItems.itemCount - 1),
+                                    onClick = {
+                                        replaceWithDeltaItem(+1)
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.SkipNext,
+                                        contentDescription = "Next Article"
+                                    )
+                                }
+                            }
                         },
                         navigationIcon = {
                             BorderedIconButton (
@@ -286,8 +322,11 @@ class ItemScreen(
                                 onPageUpdate = { c: Int, t: Int ->
                                     currentPage = c
                                     totalPages = t
-                                }
-                            ) {}
+                                },
+                                {},
+                                nextItem = {replaceWithDeltaItem(+1)},
+                                previousItem = {replaceWithDeltaItem(-1)}
+                            )
                         },
                         update = { linearLayout ->
                             if (refreshAndroidView) {
@@ -298,9 +337,10 @@ class ItemScreen(
                                     accentColor = accentColor,
                                     backgroundColor = backgroundColor,
                                     onBackgroundColor = onBackgroundColor,
-                                    justifyText = itemJustifyText,
-                                    textSizeMultiplier = itemTextSizeMultiplier,
-                                    lineSizeMultiplier = itemLineSizeMultiplier,
+                                    justifyText = state.formatSettings.justifyText,
+                                    textSizeMultiplier = state.formatSettings.textSizeMultiplier,
+                                    lineSizeMultiplier = state.formatSettings.lineSizeMultiplier,
+                                    font = state.formatSettings.font,
                                     readableText = if (readabilityState == ReadabilityState.ON) readableText else ""
                                 )
 
@@ -319,11 +359,15 @@ class ItemScreen(
                             onLineSizeSliderValueChange = { newValue ->
                                 screenModel.setItemLineSizeMultiplier(newValue)
                             },
-                            textSizeSliderValue = itemTextSizeMultiplier,
-                            lineSizeSliderValue = itemLineSizeMultiplier,
-                            isJustified = itemJustifyText,
+                            textSizeSliderValue = state.formatSettings.textSizeMultiplier,
+                            lineSizeSliderValue = state.formatSettings.lineSizeMultiplier,
+                            isJustified = state.formatSettings.justifyText,
                             onJustifyToggle = { newValue ->
                                 screenModel.setItemJustifyText(newValue)
+                            },
+                            selectedFont = state.formatSettings.font,
+                            onFontChange = { newFont ->
+                                screenModel.setItemFont(newFont)
                             }
                         )
                     }
@@ -336,6 +380,35 @@ class ItemScreen(
 }
 
 @Composable
+fun BorderedPopup(
+    onDismiss: () -> Unit,
+    alignment: Alignment,
+    modifier: Modifier = Modifier,
+    offset: IntOffset = IntOffset(0, 0),
+    content: @Composable () -> Unit,
+) {
+
+    Popup(
+        onDismissRequest = onDismiss,
+        alignment = alignment,
+        offset = offset,
+        properties = PopupProperties(focusable = true)
+    ) {
+        Surface(
+            modifier = modifier
+                .border(
+                    width = 2.dp,
+                    color = Color.Black,
+                    shape = RoundedCornerShape(4.dp)
+                ),
+            shape = RoundedCornerShape(4.dp),
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
 fun MoreOptionsPopup(
     onDismiss: () -> Unit,
     onTextSizeSliderValueChange: (Float) -> Unit,
@@ -343,145 +416,189 @@ fun MoreOptionsPopup(
     textSizeSliderValue: Float,
     lineSizeSliderValue: Float,
     isJustified: Boolean,
-    onJustifyToggle: (Boolean) -> Unit
+    onJustifyToggle: (Boolean) -> Unit,
+    selectedFont: FontPreference,
+    onFontChange: (FontPreference) -> Unit
 ) {
-    val snapPoints = listOf(1f, 1.25f, 1.5f, 1.75f, 2f)
+    val snapPoints = listOf(1f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.8f, 1.9f, 2f)
+    var expanded by remember { mutableStateOf(false) }
 
-    Box(
+    val fontNames = mapOf(
+        FontPreference.SERIF to "Serif",
+        FontPreference.SANS_SERIF to "Sans serif",
+        FontPreference.MONOSPACE to "Monospace",
+        FontPreference.NEWSREADER to "Newsreader"
+    )
+
+    BorderedPopup(
+        alignment = Alignment.TopEnd,
         modifier = Modifier
-            .fillMaxSize()
+        .padding(end = 8.dp),
+        onDismiss = onDismiss
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    onClick = onDismiss,
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                )
-        )
-
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 0.dp, end = 8.dp)
-                .border(
-                    width = 1.dp,
-                    color = Color.Black,
-                    shape = RoundedCornerShape(4.dp)
-                ),
-            shape = RoundedCornerShape(4.dp),
+                .padding(8.dp)
+                .width(300.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(8.dp)
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = {
-                            val currentIndex = snapPoints.indexOfFirst { it == textSizeSliderValue }
-                            if (currentIndex > 0) {
-                                onTextSizeSliderValueChange(snapPoints[currentIndex - 1])
-                            }
+                BorderedIconButton (
+                    onClick = {
+                        val currentIndex = snapPoints.indexOfFirst { it == textSizeSliderValue }
+                        if (currentIndex > 0) {
+                            onTextSizeSliderValueChange(snapPoints[currentIndex - 1])
                         }
-                    ) {
-                        Icon(
-                            Icons.Filled.TextDecrease,
-                            contentDescription = "Decrease"
-                        )
                     }
-
-                    Slider(
-                        value = textSizeSliderValue,
-                        onValueChange = { newValue ->
-                            val value =
-                                snapPoints.minByOrNull { kotlin.math.abs(it - newValue) }
-                                    ?: newValue
-                            onTextSizeSliderValueChange(value)
-                        },
-                        valueRange = 1f..2f,
-                        steps = 3,
-                        modifier = Modifier.width(200.dp)
-                    )
-
-                    IconButton(
-                        onClick = {
-                            val currentIndex = snapPoints.indexOfFirst { it == textSizeSliderValue }
-                            if (currentIndex < snapPoints.size - 1) {
-                                onTextSizeSliderValueChange(snapPoints[currentIndex + 1])
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.TextIncrease,
-                            contentDescription = "Increase"
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = {
-                            val currentIndex = snapPoints.indexOfFirst { it == lineSizeSliderValue }
-                            if (currentIndex > 0) {
-                                onLineSizeSliderValueChange(snapPoints[currentIndex - 1])
-                            }
-                        }
-                    ) {
-                        Icon(
-                            Icons.Filled.DensitySmall,
-                            contentDescription = "Decrease"
-                        )
-                    }
-
-                    Slider(
-                        value = lineSizeSliderValue,
-                        onValueChange = { newValue ->
-                            val value =
-                                snapPoints.minByOrNull { kotlin.math.abs(it - newValue) }
-                                    ?: newValue
-                            onLineSizeSliderValueChange(value)
-                        },
-                        valueRange = 1f..2f,
-                        steps = 3,
-                        modifier = Modifier.width(200.dp)
-                    )
-
-                    IconButton(
-                        onClick = {
-                            val currentIndex = snapPoints.indexOfFirst { it == lineSizeSliderValue }
-                            if (currentIndex < snapPoints.size - 1) {
-                                onLineSizeSliderValueChange(snapPoints[currentIndex + 1])
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.DensityLarge,
-                            contentDescription = "Increase"
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.FormatAlignJustify,
-                        contentDescription = "Justify Text",
-                        modifier = Modifier.padding(start = 8.dp)
+                        Icons.Filled.TextDecrease,
+                        contentDescription = "Decrease"
                     )
-                    Text(
-                        text = "Justify Text",
-                        modifier = Modifier.padding(start = 8.dp, end = 115.dp)
+                }
+
+                Slider(
+                    value = textSizeSliderValue,
+                    onValueChange = { newValue ->
+                        val value =
+                            snapPoints.minByOrNull { kotlin.math.abs(it - newValue) }
+                                ?: newValue
+                        onTextSizeSliderValueChange(value)
+                    },
+                    valueRange = 1f..2f,
+                    steps = 9,
+                    modifier = Modifier.width(200.dp)
+                )
+
+                BorderedIconButton(
+                    onClick = {
+                        val currentIndex = snapPoints.indexOfFirst { it == textSizeSliderValue }
+                        if (currentIndex < snapPoints.size - 1) {
+                            onTextSizeSliderValueChange(snapPoints[currentIndex + 1])
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextIncrease,
+                        contentDescription = "Increase"
                     )
-                    Switch(
-                        checked = isJustified,
-                        onCheckedChange = onJustifyToggle
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BorderedIconButton (
+                    onClick = {
+                        val currentIndex = snapPoints.indexOfFirst { it == lineSizeSliderValue }
+                        if (currentIndex > 0) {
+                            onLineSizeSliderValueChange(snapPoints[currentIndex - 1])
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Filled.DensitySmall,
+                        contentDescription = "Decrease"
                     )
+                }
+
+                Slider(
+                    value = lineSizeSliderValue,
+                    onValueChange = { newValue ->
+                        val value =
+                            snapPoints.minByOrNull { kotlin.math.abs(it - newValue) }
+                                ?: newValue
+                        onLineSizeSliderValueChange(value)
+                    },
+                    valueRange = 1f..2f,
+                    steps = 9,
+                    modifier = Modifier.width(200.dp)
+                )
+
+                BorderedIconButton(
+                    onClick = {
+                        val currentIndex = snapPoints.indexOfFirst { it == lineSizeSliderValue }
+                        if (currentIndex < snapPoints.size - 1) {
+                            onLineSizeSliderValueChange(snapPoints[currentIndex + 1])
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DensityLarge,
+                        contentDescription = "Increase"
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Justify Text",
+                    modifier = Modifier.padding(12.dp)
+                )
+                Switch(
+                    checked = isJustified,
+                    onCheckedChange = onJustifyToggle
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Font",
+                    modifier = Modifier.padding(12.dp)
+                )
+                Box {
+                    BorderedTextButton (
+                        onClick = { expanded = true },
+                        modifier = Modifier.width(150.dp)
+                    ) {
+                        Text(fontNames[selectedFont]!!)
+                    }
+                    if (expanded) {
+                        Surface(
+                            modifier = Modifier
+                                .width(150.dp)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ),
+                            shape = RoundedCornerShape(4.dp),
+                            tonalElevation = 8.dp,
+                            shadowElevation = 8.dp
+                        ) {
+                            Column {
+                                fontNames.forEach { (pref, name) ->
+                                    TextButton(
+                                        onClick = {
+                                            onFontChange(pref)
+                                            expanded = false
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(name)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

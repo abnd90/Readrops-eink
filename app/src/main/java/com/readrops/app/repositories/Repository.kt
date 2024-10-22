@@ -126,7 +126,7 @@ abstract class BaseRepository(
                 database.itemStateDao().setAllItemsRead(accountId)
             }
             account.isLocal -> {
-                database.itemDao().setAllItemsRead(account.id)
+                database.itemDao().setAllItemsRead(accountId)
             }
             else -> {
                 database.itemStateChangeDao().upsertAllItemsReadStateChanges(accountId)

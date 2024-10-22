@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowLeft
@@ -45,7 +45,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -61,6 +60,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
@@ -72,22 +72,21 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import com.readrops.app.R
+import com.readrops.app.item.BorderedPopup
 import com.readrops.app.item.ItemScreen
 import com.readrops.app.timelime.drawer.TimelineDrawer
 import com.readrops.app.util.ErrorMessage
 import com.readrops.app.util.components.BorderedIconButton
+import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import com.readrops.app.util.components.Placeholder
 import com.readrops.app.util.components.RefreshScreen
-import com.readrops.app.util.components.dialog.TwoChoicesDialog
 import com.readrops.app.util.theme.spacing
 import com.readrops.db.filters.MainFilter
 import com.readrops.db.filters.OrderField
 import com.readrops.db.filters.OrderType
 import com.readrops.db.filters.SubFilter
-import com.readrops.db.pojo.ItemWithFeed
-import kotlinx.coroutines.flow.filter
 import kotlin.math.abs
 
 
@@ -226,7 +225,7 @@ object TimelineTab : Tab {
                             }
                         },
                         navigationIcon = {
-                            BorderedIconButton (
+                            BorderedIconButton(
                                 onClick = { screenModel.openDrawer() },
                                 modifier = Modifier,
                             ) {
@@ -247,13 +246,14 @@ object TimelineTab : Tab {
                                 )
                             }
                              */
-
-                            BorderedToggleIconButton (
-                                checked = preferences.showReadItems,
-                                onCheckedChange = { checked ->
-                                    screenModel.setShowReadItemsState(
-                                        checked
-                                    )
+                            BorderedToggleIconButton(
+                                checked = state.dialog == DialogState.ConfirmDialog,
+                                onCheckedChange = { _ ->
+                                    if (state.filters.mainFilter == MainFilter.ALL) {
+                                        screenModel.openDialog(DialogState.ConfirmDialog)
+                                    } else {
+                                        screenModel.setAllItemsRead()
+                                    }
                                 }
                             ) {
                                 Icon(
@@ -264,7 +264,21 @@ object TimelineTab : Tab {
                                 )
                             }
 
-                            BorderedIconButton (
+                            BorderedToggleIconButton(
+                                checked = preferences.showReadItems,
+                                onCheckedChange = { checked ->
+                                    screenModel.setShowReadItemsState(
+                                        checked
+                                    )
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.DoneAll,
+                                    contentDescription = null,
+                                )
+                            }
+
+                            BorderedIconButton(
                                 onClick = { screenModel.refreshTimeline(context) }
                             ) {
                                 Icon(
@@ -315,6 +329,43 @@ object TimelineTab : Tab {
                             )
                         }
                 ) {
+                    val density = LocalDensity.current
+                    val xOffset =
+                        with(density) {
+                            -104.dp.toPx()
+                        }
+                    if (state.dialog == DialogState.ConfirmDialog) {
+                        BorderedPopup(
+                            onDismiss = { screenModel.closeDialog() },
+                            alignment = Alignment.TopEnd,
+                            offset = IntOffset(xOffset.toInt(), 0),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(8.dp)) {
+                                    Text(stringResource(R.string.mark_all_articles_read_question))
+                                }
+                                Row(
+                                    modifier = Modifier.align(Alignment.End),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    BorderedTextButton(
+                                        onClick = { screenModel.closeDialog() },
+                                    ) {
+                                        Text(stringResource(R.string.cancel))
+                                    }
+                                    BorderedTextButton(onClick = {
+                                        screenModel.setAllItemsRead()
+                                        items.refresh()
+                                        screenModel.closeDialog()
+                                    }) {
+                                        Text(stringResource(R.string.validate))
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Column {
                         HorizontalDivider(
                             color = Color.DarkGray,
@@ -322,127 +373,130 @@ object TimelineTab : Tab {
                                 horizontal = MaterialTheme.spacing.largeSpacing
                             )
                         )
-                    when {
-                        state.displayRefreshScreen -> RefreshScreen(
-                            currentFeed = state.currentFeed,
-                            feedCount = state.feedCount,
-                            feedMax = state.feedMax
-                        )
-
-                        items.isLoading() -> {
-                            CenteredProgressIndicator()
-                        }
-
-                        items.isError() -> {
-                            Placeholder(
-                                text = stringResource(R.string.error_occured),
-                                painter = painterResource(id = R.drawable.ic_error)
-                            )
-                        }
-
-                        else -> {
-                            MarkItemsRead(
-                                lazyListState = lazyListState,
-                                items = items,
-                                markReadOnScroll = preferences.markReadOnScroll,
-                                screenModel = screenModel
+                        when {
+                            state.displayRefreshScreen -> RefreshScreen(
+                                currentFeed = state.currentFeed,
+                                feedCount = state.feedCount,
+                                feedMax = state.feedMax
                             )
 
-                            val density = LocalDensity.current
-                            val minTimelinePadding = 15.dp
-                            val timelineItemHeight = 68.dp + 2.dp + minTimelinePadding * 2
-                            var actualTimelinePadding = minTimelinePadding
-
-                            LaunchedEffect(state.currentPage) {
-                                lazyListState.scrollToItem(state.currentPage)
+                            items.isLoading() -> {
+                                CenteredProgressIndicator()
                             }
-                            Column (modifier = Modifier.fillMaxSize()) {
-                                Box(modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                ) {
-                                    LazyRow(
+
+                            items.isError() -> {
+                                Placeholder(
+                                    text = stringResource(R.string.error_occured),
+                                    painter = painterResource(id = R.drawable.ic_error)
+                                )
+                            }
+
+                            else -> {
+
+                                val density = LocalDensity.current
+                                val minTimelinePadding = 15.dp
+                                val timelineItemHeight = 68.dp + 2.dp + minTimelinePadding * 2
+                                var actualTimelinePadding = minTimelinePadding
+
+                                LaunchedEffect(state.currentPage) {
+                                    lazyListState.scrollToItem(state.currentPage)
+                                }
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    Box(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .onSizeChanged { size ->
-                                                if (lazyRowHeight == 0.dp) {
-                                                    lazyRowHeight =
-                                                        with(density) { size.height.toDp() }
-                                                }
-                                            }
-                                            .padding(top = actualTimelinePadding),
-                                        verticalAlignment = Alignment.Top,
-                                        userScrollEnabled = false,
-                                        state = lazyListState,
-                                        contentPadding = PaddingValues(
-                                            horizontal = 50.dp,
-                                        ),
-                                        horizontalArrangement = Arrangement.spacedBy(50.dp)
+                                            .weight(1f)
+                                            .fillMaxWidth()
                                     ) {
-                                        val itemsPerColumn = if (lazyRowHeight > 0.dp) {
-                                            (lazyRowHeight / timelineItemHeight).toInt()
-                                        } else {
-                                            0 // Default value when height is not yet measured
-                                        }
-                                        if (itemsPerColumn > 0) {
-                                            actualTimelinePadding =
-                                                minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerColumn)) / (2 * itemsPerColumn)
-                                            totalPages =
-                                                (items.itemCount + itemsPerColumn - 1) / itemsPerColumn
-                                            items(
-                                                count = totalPages,
-                                                key = { it } // Use the index as the key
-                                            ) { pageIndex ->
-                                                Column(
-                                                    modifier = Modifier.fillParentMaxSize(),
-                                                    verticalArrangement = Arrangement.spacedBy(
-                                                        actualTimelinePadding
-                                                    )
-                                                ) {
-                                                    repeat(itemsPerColumn) { columnIndex ->
-                                                        val itemIndex =
-                                                            pageIndex * itemsPerColumn + columnIndex
-                                                        if (itemIndex < items.itemCount) {
-                                                            val itemWithFeed = items[itemIndex]
-                                                            if (itemWithFeed != null) {
-                                                                TimelineItem(
-                                                                    itemWithFeed = itemWithFeed,
-                                                                    onClick = {
-                                                                        screenModel.setItemRead(
-                                                                            itemWithFeed.item
-                                                                        )
-                                                                        navigator.push(
-                                                                            ItemScreen(
-                                                                                itemId = itemWithFeed.item.id,
+                                        LazyRow(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .onSizeChanged { size ->
+                                                    if (lazyRowHeight == 0.dp) {
+                                                        lazyRowHeight =
+                                                            with(density) { size.height.toDp() }
+                                                    }
+                                                }
+                                                .padding(top = actualTimelinePadding),
+                                            verticalAlignment = Alignment.Top,
+                                            userScrollEnabled = false,
+                                            state = lazyListState,
+                                            contentPadding = PaddingValues(
+                                                horizontal = 50.dp,
+                                            ),
+                                            horizontalArrangement = Arrangement.spacedBy(50.dp)
+                                        ) {
+                                            val itemsPerColumn = if (lazyRowHeight > 0.dp) {
+                                                (lazyRowHeight / timelineItemHeight).toInt()
+                                            } else {
+                                                0 // Default value when height is not yet measured
+                                            }
+                                            if (itemsPerColumn > 0) {
+                                                actualTimelinePadding =
+                                                    minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerColumn)) / (2 * itemsPerColumn)
+                                                totalPages =
+                                                    (items.itemCount + itemsPerColumn - 1) / itemsPerColumn
+                                                items(
+                                                    count = totalPages,
+                                                    key = { it } // Use the index as the key
+                                                ) { pageIndex ->
+                                                    Column(
+                                                        modifier = Modifier.fillParentMaxSize(),
+                                                        verticalArrangement = Arrangement.spacedBy(
+                                                            actualTimelinePadding
+                                                        )
+                                                    ) {
+                                                        repeat(itemsPerColumn) { columnIndex ->
+                                                            val itemIndex =
+                                                                pageIndex * itemsPerColumn + columnIndex
+                                                            if (itemIndex < items.itemCount) {
+                                                                val itemWithFeed = items[itemIndex]
+                                                                if (itemWithFeed != null) {
+                                                                    screenModel.getItemScreenReadStateUpdate(
+                                                                        itemWithFeed.item.id
+                                                                    )?.let {
+                                                                        itemWithFeed.item.isRead =
+                                                                            it
+                                                                    }
+                                                                    TimelineItem(
+                                                                        itemWithFeed = itemWithFeed,
+                                                                        onClick = {
+                                                                            screenModel.setItemRead(
+                                                                                itemWithFeed.item
+                                                                            )
+                                                                            navigator.push(
+                                                                                ItemScreen(
+                                                                                    itemId = itemWithFeed.item.id,
+                                                                                    itemListIndex = itemIndex
+                                                                                )
+                                                                            )
+                                                                        },
+                                                                        onFavorite = {
+                                                                            screenModel.updateStarState(
+                                                                                itemWithFeed.item
+                                                                            )
+                                                                        },
+                                                                        onShare = {
+                                                                            screenModel.shareItem(
+                                                                                itemWithFeed.item,
+                                                                                context
+                                                                            )
+                                                                        },
+                                                                        onSetReadState = {
+                                                                            screenModel.updateItemReadState(
+                                                                                itemWithFeed.item
+                                                                            )
+                                                                        },
+                                                                        size = preferences.itemSize,
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                    )
+
+                                                                    if (columnIndex != itemsPerColumn - 1) {
+                                                                        HorizontalDivider(
+                                                                            modifier = Modifier.padding(
+                                                                                horizontal = MaterialTheme.spacing.shortSpacing
                                                                             )
                                                                         )
-                                                                    },
-                                                                    onFavorite = {
-                                                                        screenModel.updateStarState(
-                                                                            itemWithFeed.item
-                                                                        )
-                                                                    },
-                                                                    onShare = {
-                                                                        screenModel.shareItem(
-                                                                            itemWithFeed.item,
-                                                                            context
-                                                                        )
-                                                                    },
-                                                                    onSetReadState = {
-                                                                        screenModel.updateItemReadState(
-                                                                            itemWithFeed.item
-                                                                        )
-                                                                    },
-                                                                    size = preferences.itemSize,
-                                                                    modifier = Modifier.fillMaxWidth()
-                                                                )
-
-                                                                if (columnIndex != itemsPerColumn - 1) {
-                                                                    HorizontalDivider(
-                                                                        modifier = Modifier.padding(
-                                                                            horizontal = MaterialTheme.spacing.shortSpacing
-                                                                        )
-                                                                    )
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -451,89 +505,89 @@ object TimelineTab : Tab {
                                             }
                                         }
                                     }
-                                }
-                                Column {
-                                    HorizontalDivider(
-                                        color = Color.DarkGray,
-                                        modifier = Modifier.padding(
-                                            horizontal = MaterialTheme.spacing.largeSpacing
+                                    Column {
+                                        HorizontalDivider(
+                                            color = Color.DarkGray,
+                                            modifier = Modifier.padding(
+                                                horizontal = MaterialTheme.spacing.largeSpacing
+                                            )
                                         )
-                                    )
-                                    Row(
-                                        modifier = Modifier
-                                            .padding(vertical = 5.dp)
-                                            .fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val buttonWidth = 50.dp
-
-                                        BorderedIconButton (
-                                            modifier = Modifier.width(buttonWidth),
-                                            onClick = {
-                                                screenModel.setCurrentTimelinePage(0)
-                                            },
-                                            enabled = state.currentPage > 0
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.KeyboardDoubleArrowLeft,
-                                                contentDescription = "First page"
-                                            )
-                                        }
-                                        BorderedIconButton (
-                                            modifier = Modifier.width(buttonWidth),
-                                            onClick = {
-                                                prevListPage()
-                                            },
-                                            enabled = state.currentPage > 0
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.KeyboardArrowLeft,
-                                                contentDescription = "Previous page"
-                                            )
-                                        }
-
                                         Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+                                            modifier = Modifier
+                                                .padding(vertical = 5.dp)
+                                                .fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            val currentPage = if (totalPages != 0) state.currentPage + 1 else 0
-                                            Text(
-                                                "${currentPage}",
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Text(" / $totalPages")
-                                        }
-                                        BorderedIconButton(
-                                            modifier = Modifier.width(buttonWidth),
-                                            onClick = {
-                                                nextListPage()
-                                            },
-                                            enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.KeyboardArrowRight,
-                                                contentDescription = "Next page"
-                                            )
-                                        }
-                                        BorderedIconButton (
-                                            modifier = Modifier.width(buttonWidth),
-                                            onClick = {
-                                                screenModel.setCurrentTimelinePage(totalPages - 1)
-                                            },
-                                            enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.KeyboardDoubleArrowRight,
-                                                contentDescription = "Last page"
-                                            )
+                                            val buttonWidth = 50.dp
+
+                                            BorderedIconButton(
+                                                modifier = Modifier.width(buttonWidth),
+                                                onClick = {
+                                                    screenModel.setCurrentTimelinePage(0)
+                                                },
+                                                enabled = state.currentPage > 0
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.KeyboardDoubleArrowLeft,
+                                                    contentDescription = "First page"
+                                                )
+                                            }
+                                            BorderedIconButton(
+                                                modifier = Modifier.width(buttonWidth),
+                                                onClick = {
+                                                    prevListPage()
+                                                },
+                                                enabled = state.currentPage > 0
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.KeyboardArrowLeft,
+                                                    contentDescription = "Previous page"
+                                                )
+                                            }
+
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(0.dp)
+                                            ) {
+                                                val currentPage =
+                                                    if (totalPages != 0) state.currentPage + 1 else 0
+                                                Text(
+                                                    "${currentPage}",
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(" / $totalPages")
+                                            }
+                                            BorderedIconButton(
+                                                modifier = Modifier.width(buttonWidth),
+                                                onClick = {
+                                                    nextListPage()
+                                                },
+                                                enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.KeyboardArrowRight,
+                                                    contentDescription = "Next page"
+                                                )
+                                            }
+                                            BorderedIconButton(
+                                                modifier = Modifier.width(buttonWidth),
+                                                onClick = {
+                                                    screenModel.setCurrentTimelinePage(totalPages - 1)
+                                                },
+                                                enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.KeyboardDoubleArrowRight,
+                                                    contentDescription = "Last page"
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                        }
                 }
             }
 
@@ -568,18 +622,20 @@ object TimelineTab : Tab {
 
             when (val dialog = state.dialog) {
                 is DialogState.ConfirmDialog -> {
-                    TwoChoicesDialog(
-                        title = stringResource(R.string.mark_all_articles_read),
-                        text = stringResource(R.string.mark_all_articles_read_question),
-                        icon = painterResource(id = R.drawable.ic_rss_feed_grey),
-                        confirmText = stringResource(id = R.string.validate),
-                        dismissText = stringResource(id = R.string.cancel),
-                        onDismiss = { screenModel.closeDialog() },
-                        onConfirm = {
-                            screenModel.closeDialog()
-                            screenModel.setAllItemsRead()
-                        }
-                    )
+                    /*
+                TwoChoicesDialog(
+                    title = stringResource(R.string.mark_all_articles_read),
+                    text = stringResource(R.string.mark_all_articles_read_question),
+                    icon = painterResource(id = R.drawable.ic_rss_feed_grey),
+                    confirmText = stringResource(id = R.string.validate),
+                    dismissText = stringResource(id = R.string.cancel),
+                    onDismiss = { screenModel.closeDialog() },
+                    onConfirm = {
+                        screenModel.closeDialog()
+                        screenModel.setAllItemsRead()
+                    }
+                )
+                 */
                 }
 
                 is DialogState.FilterSheet -> {
@@ -621,50 +677,7 @@ object TimelineTab : Tab {
             }
         }
     }
-
-    @Composable
-    private fun MarkItemsRead(
-        lazyListState: LazyListState,
-        items: LazyPagingItems<ItemWithFeed>,
-        markReadOnScroll: Boolean,
-        screenModel: TimelineScreenModel
-    ) {
-        val lastFirstVisibleItemIndex by screenModel.listIndexState.collectAsStateWithLifecycle()
-
-        LaunchedEffect(Unit) {
-            snapshotFlow { lazyListState.firstVisibleItemIndex }
-                .filter {
-                    if (it < lastFirstVisibleItemIndex) {
-                        screenModel.updateLastFirstVisibleItemIndex(it)
-                    }
-
-                    it > lastFirstVisibleItemIndex
-                }
-                .collect { newLastFirstVisibleItemIndex ->
-                    if (newLastFirstVisibleItemIndex - lastFirstVisibleItemIndex > 1) {
-                        val difference = newLastFirstVisibleItemIndex - lastFirstVisibleItemIndex
-
-                        for (subCount in 0 until difference) {
-                            val item = items[lastFirstVisibleItemIndex + subCount]?.item
-
-                            if (item != null && !item.isRead && markReadOnScroll) {
-                                screenModel.setItemRead(item)
-                            }
-                        }
-                    } else {
-                        val item = items[lastFirstVisibleItemIndex]?.item
-
-                        if (item != null && !item.isRead && markReadOnScroll) {
-                            screenModel.setItemRead(item)
-                        }
-                    }
-
-                    screenModel.updateLastFirstVisibleItemIndex(newLastFirstVisibleItemIndex)
-                }
-        }
-    }
 }
-
 
 fun <T : Any> LazyPagingItems<T>.isLoading(): Boolean {
     return loadState.refresh is LoadState.Loading && itemCount == 0

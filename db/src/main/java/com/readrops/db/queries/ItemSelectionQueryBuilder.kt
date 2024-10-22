@@ -26,7 +26,7 @@ object ItemSelectionQueryBuilder {
     )
 
     private val SEPARATE_STATE_COLUMNS = arrayOf(
-        "case When ItemState.read = 1 Then 1 else 0 End read",
+        "case When ItemState.remote_id is NULL Or ItemState.read = 1 Then 1 else 0 End read",
         "case When ItemState.starred = 1 Then 1 else 0 End starred"
     )
 

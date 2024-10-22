@@ -39,9 +39,18 @@ interface ItemStateDao : BaseDao<ItemState> {
         }
     }
 
+    suspend fun setAllStarredItemsRead(accountId: Int) {
+        setAllStarredItemsReadByUpdate(accountId)
+        setAllStarredItemsReadByInsert(accountId)
+    }
+
     @Query("""Update ItemState set read = 1 Where remote_id In (Select Item.remote_id From Item 
         Inner Join Feed On Feed.id = Item.feed_id Where account_id = :accountId And starred = 1)""")
-    suspend fun setAllStarredItemsRead(accountId: Int)
+    suspend fun setAllStarredItemsReadByUpdate(accountId: Int)
+
+    @Query("""Insert Or Ignore Into ItemState(read, starred, remote_id, account_id) Select 1 as read, 0 as starred, 
+        Item.remote_id as remote_id, account_id From Item Inner Join Feed On Feed.id = Item.feed_id Where Feed.account_id = :accountId And starred = 1""")
+    suspend fun setAllStarredItemsReadByInsert(accountId: Int)
 
     //region all items read
 

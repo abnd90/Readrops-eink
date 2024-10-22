@@ -10,11 +10,10 @@
         <style type=\"text/css\">
 
         @font-face {
-            font-family: Inter;
+            font-family: Newsreader;
             font-style: normal;
             font-weight: normal;
-            font-display: swap;
-            src: url("fonts/Inter-Regular.woff2") format("woff2");
+            src: url("fonts/Newsreader-Regular.ttf");
         }
 
         a:link, a:active, a:hover { color: %1$s }
@@ -30,10 +29,10 @@
         body {
             color: %2$s;
             background-color: %3$s;
-            font-family: serif !important;
+            font-family: %13$s !important;
             overflow: hidden;
             column-fill: auto;
-            height: 100vh;
+            max-height: 100vh;
             -webkit-column-count: 1;
             column-count: 1;
             -webkit-column-gap: 0%%;

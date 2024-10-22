@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.text.layoutDirection
 import com.readrops.app.R
+import com.readrops.app.util.FontPreference
 import com.readrops.app.util.Utils
 import com.readrops.db.pojo.ItemWithFeed
 import com.readrops.db.util.DateUtils
@@ -35,6 +36,8 @@ class ItemWebView(
     onImageLongPress: (String) -> Unit,
     attrs: AttributeSet? = null,
     onPageUpdate: (Int, Int) -> Unit,
+    previousItem: () -> Unit,
+    nextItem: () -> Unit,
 ) : WebView(context, attrs) {
 
     var currentPage: Int = 0
@@ -87,10 +90,23 @@ class ItemWebView(
                         abs(diffX) > SWIPE_THRESHOLD &&
                         abs(velocityX) > SWIPE_VELOCITY_THRESHOLD
                     ) {
+                        // Swipe left/right
                         if (diffX > 0) {
                             previousPage()
                         } else {
                             nextPage()
+                        }
+                        return true
+                    }
+
+                    if (abs(diffX) < abs(diffY) &&
+                        abs(diffY) > 1.5 * SWIPE_THRESHOLD &&
+                        abs(velocityY) > SWIPE_VELOCITY_THRESHOLD
+                    ) {
+                        if (diffY > 0) {
+                            previousItem()
+                        } else {
+                            nextItem()
                         }
                         return true
                     }
@@ -118,7 +134,8 @@ class ItemWebView(
         justifyText: Boolean,
         textSizeMultiplier: Float,
         lineSizeMultiplier: Float,
-        readableText: String
+        readableText: String,
+        font: FontPreference
     ) {
         val direction = if (Locale.getDefault().layoutDirection == LAYOUT_DIRECTION_LTR) {
             "ltr"
@@ -152,6 +169,12 @@ class ItemWebView(
         } else {
             context.getString(R.string.read_time_lower_than_1)
         }
+        val fontFamily = fontPreferenceToCssFamily(font)
+        var subHeading = itemWithFeed.feedName
+        if (itemWithFeed.item.author != null) {
+            subHeading +=
+                " · ${itemWithFeed.item.author}"
+        }
 
         // TODO: Find or write a templating library
         val string = context.getString(
@@ -164,10 +187,11 @@ class ItemWebView(
             itemWithFeed.item.title,
             "$dateString · $readTime",
             itemWithFeed.feedIconUrl,
-            "${itemWithFeed.feedName} · ${itemWithFeed.item.author}",
+            subHeading,
             textAlign,
             "${textSizeMultiplier}em",
             "${lineSizeMultiplier}em",
+            fontFamily
         )
 
         // TODO: Retain currentPage and scroll to that page.
@@ -179,6 +203,15 @@ class ItemWebView(
             "UTF-8",
             null
         )
+    }
+
+    private fun fontPreferenceToCssFamily(font: FontPreference): String {
+        when (font) {
+            FontPreference.SANS_SERIF -> return "sans-serif"
+            FontPreference.SERIF -> return "serif"
+            FontPreference.MONOSPACE -> return "monospace"
+            FontPreference.NEWSREADER -> return "Newsreader"
+        }
     }
 
     private fun formatText(itemWithFeed: ItemWithFeed): String {

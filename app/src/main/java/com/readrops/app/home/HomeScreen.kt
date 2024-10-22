@@ -39,7 +39,7 @@ object HomeScreen : AndroidScreen() {
         LaunchedEffect(Unit) {
             itemChannel.receiveAsFlow()
                 .collect {
-                    navigator.push(ItemScreen(it))
+                    navigator.push(ItemScreen(it, null))
                 }
         }
 

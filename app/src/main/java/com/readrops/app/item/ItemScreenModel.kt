@@ -14,6 +14,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.readrops.app.repositories.BaseRepository
+import com.readrops.app.util.FontPreference
 import com.readrops.app.util.Preferences
 import com.readrops.db.Database
 import com.readrops.db.entities.Item
@@ -24,6 +25,7 @@ import com.readrops.db.queries.ItemSelectionQueryBuilder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
@@ -103,6 +105,34 @@ class ItemScreenModel(
                 }
             }
         }
+
+        screenModelScope.launch(dispatcher) {
+            getFormattingPreferences()
+                .collect { preferences ->
+                    mutableState.update {
+                        it.copy(
+                            formatSettings = preferences
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun getFormattingPreferences(): Flow<ItemFormatSettings> {
+        return combine(
+            preferences.itemFont.flow,
+            preferences.itemJustifyText.flow,
+            preferences.itemTextSizeMultiplier.flow,
+            preferences.itemLineSizeMultiplier.flow,
+            transform = { it ->
+                ItemFormatSettings(
+                    font = FontPreference.fromInt(it[0] as Int),
+                    justifyText = it[1] as Boolean,
+                    textSizeMultiplier = it[2] as Float,
+                    lineSizeMultiplier = it[3] as Float
+                )
+            }
+        )
     }
 
     fun shareItem(item: Item, context: Context) {
@@ -115,10 +145,9 @@ class ItemScreenModel(
         }
     }
 
-    fun setItemReadState(item: Item, function: () -> Unit) {
+    fun setItemReadState(item: Item) {
         screenModelScope.launch(dispatcher) {
             repository.setItemReadState(item)
-            function()
         }
     }
 
@@ -222,19 +251,46 @@ class ItemScreenModel(
     fun setItemJustifyText(value: Boolean) {
         screenModelScope.launch {
             preferences.itemJustifyText.write(value)
+            mutableState.update {
+                it.copy(formatSettings = it.formatSettings.copy(justifyText = value))
+            }
         }
     }
     fun setItemTextSizeMultiplier(value: Float) {
         screenModelScope.launch {
             preferences.itemTextSizeMultiplier.write(value)
+            mutableState.update {
+                it.copy(formatSettings = it.formatSettings.copy(textSizeMultiplier = value))
+            }
         }
     }
     fun setItemLineSizeMultiplier(value: Float) {
         screenModelScope.launch {
             preferences.itemLineSizeMultiplier.write(value)
+            mutableState.update {
+                it.copy(formatSettings = it.formatSettings.copy(lineSizeMultiplier = value))
+            }
         }
     }
+
+    fun setItemFont(font: FontPreference) {
+        screenModelScope.launch {
+            preferences.itemFont.write(font.value)
+            mutableState.update {
+                it.copy(formatSettings = it.formatSettings.copy(font = font))
+            }
+        }
+
+    }
 }
+
+@Stable
+data class ItemFormatSettings(
+    val justifyText: Boolean = false,
+    val textSizeMultiplier: Float = 1.0f,
+    val lineSizeMultiplier: Float = 1.0f,
+    val font: FontPreference = FontPreference.SANS_SERIF
+)
 
 @Stable
 data class ItemState(
@@ -243,5 +299,6 @@ data class ItemState(
     val imageDialogUrl: String? = null,
     val fileDownloadedEvent: Boolean = false,
     val openInExternalBrowser: Boolean = false,
+    val formatSettings: ItemFormatSettings = ItemFormatSettings(),
     val theme: String? = ""
 )

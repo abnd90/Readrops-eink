@@ -190,6 +190,8 @@ class ItemLinearLayout(
     onImageLongPress: (String) -> Unit,
     onPageUpdate: (Int, Int) -> Unit,
     composeViewContent: @Composable () -> Unit,
+    previousItem: () -> Unit,
+    nextItem: () -> Unit,
 ) : LinearLayout(context) {
 
     private var webView: ItemWebView
@@ -208,6 +210,9 @@ class ItemLinearLayout(
             onUrlClick = onUrlClick,
             onImageLongPress = onImageLongPress,
             onPageUpdate = onPageUpdate,
+            previousItem = previousItem,
+            nextItem = nextItem
+
         )
         val webViewParams = LayoutParams(
             LayoutParams.MATCH_PARENT,

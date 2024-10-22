@@ -102,14 +102,32 @@ class Preferences(
     val itemTextSizeMultiplier = Preference(
         dataStore = dataStore,
         key = floatPreferencesKey("item_size_multiplier"),
-        default = 1.0f
+        default = 1.2f
     )
 
     val itemLineSizeMultiplier = Preference(
         dataStore = dataStore,
         key = floatPreferencesKey("line_size_multiplier"),
-        default = 1.0f
+        default = 1.4f
     )
+
+    val itemFont = Preference(
+        dataStore = dataStore,
+        key = intPreferencesKey("item_font"),
+        default = FontPreference.SANS_SERIF.value
+    )
+
+}
+
+enum class FontPreference(val value: Int) {
+    SANS_SERIF(0),
+    SERIF(1),
+    MONOSPACE(2),
+    NEWSREADER(3);
+
+    companion object {
+        fun fromInt(value: Int) = FontPreference.values().first { it.value == value }
+    }
 }
 
 
