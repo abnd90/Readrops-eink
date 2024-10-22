@@ -128,7 +128,7 @@ object TimelineTab : Tab {
         var itemsPerPage by remember { mutableStateOf(0) }
         val totalPages = {
             if (itemsPerPage > 0)
-                items.itemCount + itemsPerPage - 1 / itemsPerPage
+                (items.itemCount + itemsPerPage - 1) / itemsPerPage
             else 0
         }
         val nextListPage = {
@@ -473,6 +473,7 @@ object TimelineTab : Tab {
                                                                             screenModel.setItemRead(
                                                                                 itemWithFeed.item
                                                                             )
+                                                                            screenModel.setTimelineItemIndex(itemIndex)
                                                                             navigator.push(
                                                                                 ItemScreen(
                                                                                     itemId = itemWithFeed.item.id,
