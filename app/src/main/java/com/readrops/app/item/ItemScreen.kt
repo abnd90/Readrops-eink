@@ -196,12 +196,14 @@ class ItemScreen(
                 )
             }
             val replaceWithDeltaItem = { delta : Int ->
-                if (itemListIndex != null) {
+                if (itemListIndex != null &&
+                    timelineListItems[itemListIndex]!!.item.id == itemWithFeed.item.id) {
                     val newIndex = itemListIndex + delta
                     if ((delta < 0 && newIndex >= 0)
                         || (delta > 0 && newIndex < timelineListItems.itemCount)) {
                         val newItemWithFeed = timelineListItems[newIndex]
                         timelineScreenModel.setItemRead(newItemWithFeed!!.item)
+                        timelineScreenModel.setTimelineItemIndex(newIndex)
                         navigator.replace(
                             ItemScreen(
                                 newItemWithFeed!!.item.id,

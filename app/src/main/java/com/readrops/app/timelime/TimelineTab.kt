@@ -113,24 +113,38 @@ object TimelineTab : Tab {
         val items = state.itemState.collectAsLazyPagingItems()
 
         val lazyListState = rememberLazyListState()
-        var lazyRowHeight by remember { mutableStateOf(0.dp) }
         val snackbarHostState = remember { SnackbarHostState() }
         val topAppBarState = rememberTopAppBarState()
         val topAppBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
-        var totalPages by remember { mutableStateOf(0) }
 
         val launcher =
             rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
                 screenModel.disableDisplayNotificationsPermission()
             }
 
+        val minTimelinePadding = 15.dp
+        val timelineItemHeight = 68.dp + 2.dp + minTimelinePadding * 2
+        var lazyRowHeight by remember { mutableStateOf(0.dp) }
+        var itemsPerPage by remember { mutableStateOf(0) }
+        val totalPages = {
+            if (itemsPerPage > 0)
+                items.itemCount + itemsPerPage - 1 / itemsPerPage
+            else 0
+        }
         val nextListPage = {
-            if (state.currentPage < totalPages - 1)
-                screenModel.setCurrentTimelinePage(state.currentPage + 1)
+            if (state.currentItemIdx < items.itemCount) {
+                val newItemIdx = state.currentItemIdx + itemsPerPage
+                screenModel.setTimelineItemIndex(newItemIdx - (newItemIdx % itemsPerPage))
+            }
         }
         val prevListPage = {
-            if (state.currentPage != 0)
-                screenModel.setCurrentTimelinePage(state.currentPage - 1)
+            if (state.currentItemIdx > 0) {
+                val newItemIdx = state.currentItemIdx - itemsPerPage
+                screenModel.setTimelineItemIndex(newItemIdx - (newItemIdx % itemsPerPage))
+            }
+        }
+        val currentPage = {
+            if (itemsPerPage > 0) state.currentItemIdx / itemsPerPage else 0
         }
 
         LaunchedEffect(preferences.displayNotificationsPermission) {
@@ -394,12 +408,12 @@ object TimelineTab : Tab {
                             else -> {
 
                                 val density = LocalDensity.current
-                                val minTimelinePadding = 15.dp
-                                val timelineItemHeight = 68.dp + 2.dp + minTimelinePadding * 2
                                 var actualTimelinePadding = minTimelinePadding
 
-                                LaunchedEffect(state.currentPage) {
-                                    lazyListState.scrollToItem(state.currentPage)
+                                LaunchedEffect(state.currentItemIdx) {
+                                    if (itemsPerPage > 0) {
+                                        lazyListState.scrollToItem(state.currentItemIdx / itemsPerPage)
+                                    }
                                 }
                                 Column(modifier = Modifier.fillMaxSize()) {
                                     Box(
@@ -411,9 +425,12 @@ object TimelineTab : Tab {
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .onSizeChanged { size ->
-                                                    if (lazyRowHeight == 0.dp) {
-                                                        lazyRowHeight =
-                                                            with(density) { size.height.toDp() }
+                                                    val newHeight =
+                                                        with(density) { size.height.toDp() }
+                                                    if (lazyRowHeight == 0.dp || lazyRowHeight != newHeight) {
+                                                        lazyRowHeight = newHeight
+                                                        itemsPerPage =
+                                                            (lazyRowHeight / timelineItemHeight).toInt()
                                                     }
                                                 }
                                                 .padding(top = actualTimelinePadding),
@@ -425,18 +442,11 @@ object TimelineTab : Tab {
                                             ),
                                             horizontalArrangement = Arrangement.spacedBy(50.dp)
                                         ) {
-                                            val itemsPerColumn = if (lazyRowHeight > 0.dp) {
-                                                (lazyRowHeight / timelineItemHeight).toInt()
-                                            } else {
-                                                0 // Default value when height is not yet measured
-                                            }
-                                            if (itemsPerColumn > 0) {
+                                            if (itemsPerPage > 0) {
                                                 actualTimelinePadding =
-                                                    minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerColumn)) / (2 * itemsPerColumn)
-                                                totalPages =
-                                                    (items.itemCount + itemsPerColumn - 1) / itemsPerColumn
+                                                    minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerPage)) / (2 * itemsPerPage)
                                                 items(
-                                                    count = totalPages,
+                                                    count = totalPages(),
                                                     key = { it } // Use the index as the key
                                                 ) { pageIndex ->
                                                     Column(
@@ -445,9 +455,9 @@ object TimelineTab : Tab {
                                                             actualTimelinePadding
                                                         )
                                                     ) {
-                                                        repeat(itemsPerColumn) { columnIndex ->
+                                                        repeat(itemsPerPage) { columnIndex ->
                                                             val itemIndex =
-                                                                pageIndex * itemsPerColumn + columnIndex
+                                                                pageIndex * itemsPerPage + columnIndex
                                                             if (itemIndex < items.itemCount) {
                                                                 val itemWithFeed = items[itemIndex]
                                                                 if (itemWithFeed != null) {
@@ -490,7 +500,7 @@ object TimelineTab : Tab {
                                                                         modifier = Modifier.fillMaxWidth()
                                                                     )
 
-                                                                    if (columnIndex != itemsPerColumn - 1) {
+                                                                    if (columnIndex != itemsPerPage - 1) {
                                                                         HorizontalDivider(
                                                                             modifier = Modifier.padding(
                                                                                 horizontal = MaterialTheme.spacing.shortSpacing
@@ -524,9 +534,9 @@ object TimelineTab : Tab {
                                             BorderedIconButton(
                                                 modifier = Modifier.width(buttonWidth),
                                                 onClick = {
-                                                    screenModel.setCurrentTimelinePage(0)
+                                                    screenModel.setTimelineItemIndex(0)
                                                 },
-                                                enabled = state.currentPage > 0
+                                                enabled = currentPage() > 0
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Filled.KeyboardDoubleArrowLeft,
@@ -538,7 +548,7 @@ object TimelineTab : Tab {
                                                 onClick = {
                                                     prevListPage()
                                                 },
-                                                enabled = state.currentPage > 0
+                                                enabled = currentPage() > 0
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Filled.KeyboardArrowLeft,
@@ -551,11 +561,12 @@ object TimelineTab : Tab {
                                                 horizontalArrangement = Arrangement.spacedBy(0.dp)
                                             ) {
                                                 val currentPage =
-                                                    if (totalPages != 0) state.currentPage + 1 else 0
+                                                    if (totalPages() == 0) 0 else currentPage() + 1
                                                 Text(
                                                     "${currentPage}",
                                                     fontWeight = FontWeight.Bold
                                                 )
+                                                val totalPages = totalPages()
                                                 Text(" / $totalPages")
                                             }
                                             BorderedIconButton(
@@ -563,7 +574,7 @@ object TimelineTab : Tab {
                                                 onClick = {
                                                     nextListPage()
                                                 },
-                                                enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
+                                                enabled = currentPage() != (totalPages() - 1)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.KeyboardArrowRight,
@@ -573,9 +584,9 @@ object TimelineTab : Tab {
                                             BorderedIconButton(
                                                 modifier = Modifier.width(buttonWidth),
                                                 onClick = {
-                                                    screenModel.setCurrentTimelinePage(totalPages - 1)
+                                                    screenModel.setTimelineItemIndex(items.itemCount - 1)
                                                 },
-                                                enabled = if (totalPages != 0) state.currentPage != (totalPages - 1) else false
+                                                enabled = currentPage() != (totalPages() - 1)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Filled.KeyboardDoubleArrowRight,

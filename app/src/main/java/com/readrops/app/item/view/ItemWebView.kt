@@ -74,7 +74,7 @@ class ItemWebView(
 
         gestureDetector =
             GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-                private val SWIPE_THRESHOLD = 30
+                private val SWIPE_THRESHOLD = 50
                 private val SWIPE_VELOCITY_THRESHOLD = 30
 
                 override fun onFling(
@@ -100,7 +100,7 @@ class ItemWebView(
                     }
 
                     if (abs(diffX) < abs(diffY) &&
-                        abs(diffY) > 1.5 * SWIPE_THRESHOLD &&
+                        abs(diffY) > 3 * SWIPE_THRESHOLD &&
                         abs(velocityY) > SWIPE_VELOCITY_THRESHOLD
                     ) {
                         if (diffY > 0) {

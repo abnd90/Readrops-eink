@@ -120,8 +120,8 @@ class TimelineScreenModel(
         }
     }
 
-    fun setCurrentTimelinePage(page: Int) {
-        _timelineState.update { it.copy(currentPage = page )}
+    fun setTimelineItemIndex(index: Int) {
+        _timelineState.update { it.copy(currentItemIdx = index )}
     }
 
     private fun getTimelinePreferences(): Flow<TimelinePreferences> {
@@ -176,7 +176,7 @@ class TimelineScreenModel(
                     emptyFlow()
                 },
                 isAccountLocal = currentAccount!!.isLocal,
-                currentPage = 0
+                currentItemIdx = 0
             )
         }
 
@@ -221,7 +221,7 @@ class TimelineScreenModel(
                             it.copy(
                                 isRefreshing = false,
                                 localSyncErrors = errors?.ifEmpty { null },
-                                currentPage = 0
+                                currentItemIdx = 0
                             )
                         }
 
@@ -397,7 +397,7 @@ class TimelineScreenModel(
             _timelineState.update {
                 it.copy(
                     filters = it.filters.copy(showReadItems = showReadItems),
-                    currentPage = 0
+                    currentItemIdx = 0
                 )
             }
         }
@@ -466,7 +466,7 @@ data class TimelineState(
     val dialog: DialogState? = null,
     val isAccountLocal: Boolean = false,
     val preferences: TimelinePreferences = TimelinePreferences(),
-    val currentPage: Int = 0,
+    val currentItemIdx: Int = 0,
 ) {
 
     val showSubtitle = filters.subFilter != SubFilter.ALL
