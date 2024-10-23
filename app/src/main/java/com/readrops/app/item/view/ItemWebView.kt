@@ -2,6 +2,7 @@ package com.readrops.app.item.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -21,6 +22,7 @@ import org.jsoup.parser.Parser
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
 
 class WebAppInterface(private val onPageCountUpdate: (Int) -> Unit){
     @JavascriptInterface
@@ -100,7 +102,7 @@ class ItemWebView(
                     }
 
                     if (abs(diffX) < abs(diffY) &&
-                        abs(diffY) > 3 * SWIPE_THRESHOLD &&
+                        abs(diffY) > 5 * SWIPE_THRESHOLD &&
                         abs(velocityY) > SWIPE_VELOCITY_THRESHOLD
                     ) {
                         if (diffY > 0) {
@@ -119,8 +121,12 @@ class ItemWebView(
             //goToPage(currentPage)
             onPageUpdate()
         }, "Android")
+
+        if (0 != (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
+            setWebContentsDebuggingEnabled(true)
+        }
     }
-    
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gestureDetector.onTouchEvent(event)
         return super.onTouchEvent(event)
@@ -191,11 +197,10 @@ class ItemWebView(
             textAlign,
             "${textSizeMultiplier}em",
             "${lineSizeMultiplier}em",
-            fontFamily
+            fontFamily,
+            currentPage
         )
 
-        // TODO: Retain currentPage and scroll to that page.
-        currentPage = 0
         loadDataWithBaseURL(
             "file:///android_asset/",
             string,

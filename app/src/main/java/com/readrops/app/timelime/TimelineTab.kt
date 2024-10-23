@@ -412,7 +412,7 @@ object TimelineTab : Tab {
 
                                 LaunchedEffect(state.currentItemIdx) {
                                     if (itemsPerPage > 0) {
-                                        lazyListState.scrollToItem(state.currentItemIdx / itemsPerPage)
+                                        lazyListState.requestScrollToItem(state.currentItemIdx / itemsPerPage)
                                     }
                                 }
                                 Column(modifier = Modifier.fillMaxSize()) {

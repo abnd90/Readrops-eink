@@ -260,16 +260,6 @@ class ItemScreen(
                                     }
                                 }
                             }
-                            BorderedToggleIconButton(
-                                checked = showTextFormatPopup,
-                                onCheckedChange = { checked -> showTextFormatPopup = checked },
-                                drawBottomTriangle = true
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.TextFormat,
-                                    contentDescription = "Text Formatting"
-                                )
-                            }
                             if (itemListIndex != null &&
                                 timelineListItems[itemListIndex]?.item?.id == itemId) {
                                 BorderedIconButton(
@@ -294,6 +284,16 @@ class ItemScreen(
                                         contentDescription = "Next Article"
                                     )
                                 }
+                            }
+                            BorderedToggleIconButton(
+                                checked = showTextFormatPopup,
+                                onCheckedChange = { checked -> showTextFormatPopup = checked },
+                                drawBottomTriangle = true
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.TextFormat,
+                                    contentDescription = "Text Formatting"
+                                )
                             }
                         },
                         navigationIcon = {
