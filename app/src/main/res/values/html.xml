@@ -172,9 +172,7 @@
                 <img width="24px" height="24px" src="%8$s" />
                 <span>%9$s</span>
             </div>
-            <div id="_content">
-                %5$s
-            </div>
+            <div id="_content">%5$s</div>
         </div>
     </body>
 </html>]]></string>

@@ -18,7 +18,10 @@ import com.readrops.app.util.Utils
 import com.readrops.db.pojo.ItemWithFeed
 import com.readrops.db.util.DateUtils
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
+import org.jsoup.safety.Cleaner
+import org.jsoup.safety.Safelist
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -103,7 +106,7 @@ class ItemWebView(
 
                     if (abs(diffX) < abs(diffY) &&
                         abs(diffY) > 5 * SWIPE_THRESHOLD &&
-                        abs(velocityY) > SWIPE_VELOCITY_THRESHOLD
+                        abs(velocityY) > 2 * SWIPE_VELOCITY_THRESHOLD
                     ) {
                         if (diffY > 0) {
                             previousItem()
@@ -159,7 +162,7 @@ class ItemWebView(
         }
 
         val html = if (!readableText.isEmpty()) {
-            readableText
+            sanitizeHtml(readableText, itemWithFeed.websiteUrl)
         } else {
             formatText(itemWithFeed)
         }
@@ -226,12 +229,24 @@ class ItemWebView(
             ) else Jsoup.parse(
                 Parser.unescapeEntities(itemWithFeed.item.text, false)
             )
-
             document.select("div,span").forEach { it.clearAttributes() }
-            return document.body().html()
+            return sanitizeDoc(document).body().html()
         } else {
             ""
         }
+    }
+
+    private fun sanitizeHtml(html: String, baseUrl: String?): String {
+        var document = if (baseUrl != null) Jsoup.parse(html, baseUrl) else Jsoup.parse(html)
+        return sanitizeDoc(document).body().html()
+    }
+
+    private fun sanitizeDoc(document: Document): Document {
+        // TODO: CSP sanitize HTML. Current method removes various text elements (Eg: image captions)
+        // and is too strict.
+        val cleaner = Cleaner(Safelist.relaxed())
+        val cleanDoc = cleaner.clean(document)
+        return document
     }
 
     fun nextPage() {

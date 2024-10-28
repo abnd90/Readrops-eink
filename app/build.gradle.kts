@@ -23,6 +23,7 @@ android {
             isShrinkResources = true
 
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
         }
 
         debug {
@@ -101,5 +102,5 @@ dependencies {
     implementation(libs.aboutlibraries.composem3)
     implementation(libs.material.icons.extended)
 
-    implementation(libs.readability4j)
+    implementation("com.github.abnd90:Readability4J:-SNAPSHOT")
 }

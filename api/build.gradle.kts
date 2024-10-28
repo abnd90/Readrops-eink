@@ -7,6 +7,9 @@ android {
     namespace = "com.readrops.api"
 
     buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         debug {
             enableUnitTestCoverage = true
         }
