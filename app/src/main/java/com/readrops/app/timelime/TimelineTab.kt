@@ -9,14 +9,11 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -112,7 +109,6 @@ object TimelineTab : Tab {
         val preferences = state.preferences
         val items = state.itemState.collectAsLazyPagingItems()
 
-        val lazyListState = rememberLazyListState()
         val snackbarHostState = remember { SnackbarHostState() }
         val topAppBarState = rememberTopAppBarState()
         val topAppBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
@@ -124,7 +120,7 @@ object TimelineTab : Tab {
 
         val minTimelinePadding = 15.dp
         val timelineItemHeight = 68.dp + 2.dp + minTimelinePadding * 2
-        var lazyRowHeight by remember { mutableStateOf(0.dp) }
+        var mainRowHeight by remember { mutableStateOf(0.dp) }
         var itemsPerPage by remember { mutableStateOf(0) }
         val totalPages = {
             if (itemsPerPage > 0)
@@ -410,104 +406,89 @@ object TimelineTab : Tab {
                                 val density = LocalDensity.current
                                 var actualTimelinePadding = minTimelinePadding
 
-                                LaunchedEffect(state.currentItemIdx) {
-                                    if (itemsPerPage > 0) {
-                                        lazyListState.requestScrollToItem(state.currentItemIdx / itemsPerPage)
-                                    }
-                                }
                                 Column(modifier = Modifier.fillMaxSize()) {
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
                                             .fillMaxWidth()
                                     ) {
-                                        LazyRow(
+                                        Row(
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .onSizeChanged { size ->
                                                     val newHeight =
                                                         with(density) { size.height.toDp() }
-                                                    if (lazyRowHeight == 0.dp || lazyRowHeight != newHeight) {
-                                                        lazyRowHeight = newHeight
+                                                    if (mainRowHeight == 0.dp || mainRowHeight != newHeight) {
+                                                        mainRowHeight = newHeight
                                                         itemsPerPage =
-                                                            (lazyRowHeight / timelineItemHeight).toInt()
+                                                            (mainRowHeight / timelineItemHeight).toInt()
                                                     }
                                                 }
-                                                .padding(top = actualTimelinePadding),
+                                                .padding(top = actualTimelinePadding, start = 50.dp, end = 50.dp),
                                             verticalAlignment = Alignment.Top,
-                                            userScrollEnabled = false,
-                                            state = lazyListState,
-                                            contentPadding = PaddingValues(
-                                                horizontal = 50.dp,
-                                            ),
                                             horizontalArrangement = Arrangement.spacedBy(50.dp)
+
                                         ) {
                                             if (itemsPerPage > 0) {
                                                 actualTimelinePadding =
-                                                    minTimelinePadding + (lazyRowHeight - (timelineItemHeight * itemsPerPage)) / (2 * itemsPerPage)
-                                                items(
-                                                    count = totalPages(),
-                                                    key = { it } // Use the index as the key
-                                                ) { pageIndex ->
-                                                    Column(
-                                                        modifier = Modifier.fillParentMaxSize(),
+                                                    minTimelinePadding + (mainRowHeight - (timelineItemHeight * itemsPerPage)) / (2 * itemsPerPage)
+                                                Column(
                                                         verticalArrangement = Arrangement.spacedBy(
                                                             actualTimelinePadding
                                                         )
-                                                    ) {
-                                                        repeat(itemsPerPage) { columnIndex ->
-                                                            val itemIndex =
-                                                                pageIndex * itemsPerPage + columnIndex
-                                                            if (itemIndex < items.itemCount) {
-                                                                val itemWithFeed = items[itemIndex]
-                                                                if (itemWithFeed != null) {
-                                                                    screenModel.getItemScreenReadStateUpdate(
-                                                                        itemWithFeed.item.id
-                                                                    )?.let {
-                                                                        itemWithFeed.item.isRead =
-                                                                            it
-                                                                    }
-                                                                    TimelineItem(
-                                                                        itemWithFeed = itemWithFeed,
-                                                                        onClick = {
-                                                                            screenModel.setItemRead(
-                                                                                itemWithFeed.item
-                                                                            )
-                                                                            screenModel.setTimelineItemIndex(itemIndex)
-                                                                            navigator.push(
-                                                                                ItemScreen(
-                                                                                    itemId = itemWithFeed.item.id,
-                                                                                    itemListIndex = itemIndex
-                                                                                )
-                                                                            )
-                                                                        },
-                                                                        onFavorite = {
-                                                                            screenModel.updateStarState(
-                                                                                itemWithFeed.item
-                                                                            )
-                                                                        },
-                                                                        onShare = {
-                                                                            screenModel.shareItem(
-                                                                                itemWithFeed.item,
-                                                                                context
-                                                                            )
-                                                                        },
-                                                                        onSetReadState = {
-                                                                            screenModel.updateItemReadState(
-                                                                                itemWithFeed.item
-                                                                            )
-                                                                        },
-                                                                        size = preferences.itemSize,
-                                                                        modifier = Modifier.fillMaxWidth()
-                                                                    )
-
-                                                                    if (columnIndex != itemsPerPage - 1) {
-                                                                        HorizontalDivider(
-                                                                            modifier = Modifier.padding(
-                                                                                horizontal = MaterialTheme.spacing.shortSpacing
+                                                ) {
+                                                    repeat(itemsPerPage) { columnIndex ->
+                                                        val itemIndex =
+                                                            currentPage() * itemsPerPage + columnIndex
+                                                        if (itemIndex < items.itemCount) {
+                                                            val itemWithFeed = items[itemIndex]
+                                                            if (itemWithFeed != null) {
+                                                                screenModel.getItemScreenReadStateUpdate(
+                                                                    itemWithFeed.item.id
+                                                                )?.let {
+                                                                    itemWithFeed.item.isRead =
+                                                                        it
+                                                                }
+                                                                TimelineItem(
+                                                                    itemWithFeed = itemWithFeed,
+                                                                    onClick = {
+                                                                        screenModel.setItemRead(
+                                                                            itemWithFeed.item
+                                                                        )
+                                                                        screenModel.setTimelineItemIndex(itemIndex)
+                                                                        navigator.push(
+                                                                            ItemScreen(
+                                                                                itemId = itemWithFeed.item.id,
+                                                                                itemListIndex = itemIndex
                                                                             )
                                                                         )
-                                                                    }
+                                                                    },
+                                                                    onFavorite = {
+                                                                        screenModel.updateStarState(
+                                                                            itemWithFeed.item
+                                                                        )
+                                                                    },
+                                                                    onShare = {
+                                                                        screenModel.shareItem(
+                                                                            itemWithFeed.item,
+                                                                            context
+                                                                        )
+                                                                    },
+                                                                    onSetReadState = {
+                                                                        screenModel.updateItemReadState(
+                                                                            itemWithFeed.item
+                                                                        )
+                                                                    },
+                                                                    size = preferences.itemSize,
+                                                                    modifier = Modifier.fillMaxWidth()
+                                                                )
+
+                                                                if (columnIndex != itemsPerPage - 1) {
+                                                                    HorizontalDivider(
+                                                                        modifier = Modifier.padding(
+                                                                            horizontal = MaterialTheme.spacing.shortSpacing
+                                                                        )
+                                                                    )
                                                                 }
                                                             }
                                                         }
@@ -575,7 +556,7 @@ object TimelineTab : Tab {
                                                 onClick = {
                                                     nextListPage()
                                                 },
-                                                enabled = currentPage() != (totalPages() - 1)
+                                                enabled = currentPage() < (totalPages() - 1)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.KeyboardArrowRight,
@@ -587,7 +568,7 @@ object TimelineTab : Tab {
                                                 onClick = {
                                                     screenModel.setTimelineItemIndex(items.itemCount - 1)
                                                 },
-                                                enabled = currentPage() != (totalPages() - 1)
+                                                enabled = currentPage() < (totalPages() - 1)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Filled.KeyboardDoubleArrowRight,

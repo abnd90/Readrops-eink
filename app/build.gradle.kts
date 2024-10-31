@@ -102,5 +102,5 @@ dependencies {
     implementation(libs.aboutlibraries.composem3)
     implementation(libs.material.icons.extended)
 
-    implementation("com.github.abnd90:Readability4J:-SNAPSHOT")
+    implementation("com.github.abnd90:Readability4J:1.0.9")
 }
