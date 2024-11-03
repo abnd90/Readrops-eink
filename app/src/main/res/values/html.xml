@@ -30,7 +30,7 @@
             color: %2$s;
             background-color: %3$s;
             font-family: %13$s !important;
-            overflow: hidden;
+            overflow: auto;
             column-fill: auto;
             -webkit-column-fill: auto;
             column-width: 100vw;
@@ -77,8 +77,11 @@
 
         figure, img, iframe, video {
             margin: 0px;
-            height: auto;
             max-width: 100%%;
+        }
+
+        figure, img {
+            height: auto;
         }
 
         iframe {
@@ -147,20 +150,14 @@
             function initialize() {
                 var body = document.body;
                 var contentWidth = body.scrollWidth;
-                var viewportWidth = window.innerWidth;
+                var viewportWidth = body.getBoundingClientRect().width;
 
                 window.pageCount = Math.ceil(contentWidth / viewportWidth);
-                window.changePage = function(page) {
-                    if (page >= 0 && page < window.pageCount) {
-                        window.scrollTo({
-                            left: page * viewportWidth,
-                            behavior: \'instant\'
-                        });
-                    }
-                };
-                changePage(%14$d);
                 Android.setPageCount(window.pageCount);
             };
+            document.addEventListener(\'DOMContentLoaded\', function() {
+                initialize();
+            });
         </script>
     </head>
 

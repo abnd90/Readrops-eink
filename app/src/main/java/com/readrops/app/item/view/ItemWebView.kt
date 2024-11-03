@@ -121,7 +121,6 @@ class ItemWebView(
 
         addJavascriptInterface(WebAppInterface { pageCount ->
             totalPages = pageCount
-            //goToPage(currentPage)
             onPageUpdate()
         }, "Android")
 
@@ -133,6 +132,18 @@ class ItemWebView(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gestureDetector.onTouchEvent(event)
         return super.onTouchEvent(event)
+    }
+
+    override fun scrollTo(x: Int, y: Int) {
+        // Do nothing
+    }
+
+    public override fun overScrollBy(
+        deltaX: Int, deltaY: Int, scrollX: Int, scrollY: Int,
+        scrollRangeX: Int, scrollRangeY: Int, maxOverScrollX: Int,
+        maxOverScrollY: Int, isTouchEvent: Boolean
+    ): Boolean {
+        return false
     }
 
     fun loadText(
@@ -201,7 +212,6 @@ class ItemWebView(
             "${textSizeMultiplier}em",
             "${lineSizeMultiplier}em",
             fontFamily,
-            currentPage
         )
 
         loadDataWithBaseURL(
@@ -262,7 +272,7 @@ class ItemWebView(
     }
 
     fun goToPage(page:Int) {
-        evaluateJavascript("window.changePage(${page});", null)
+        super.scrollTo(page * width, 0)
         onPageUpdate()
     }
 }
