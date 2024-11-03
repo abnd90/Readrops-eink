@@ -343,7 +343,6 @@ class ItemScreen(
                         factory = { context ->
                             ItemLinearLayout(
                                 context = context,
-                                useBackgroundTitle = item.imageLink != null,
                                 onUrlClick = { url -> openUrl(url) },
                                 onImageLongPress = { url -> screenModel.openImageDialog(url) },
                                 onPageUpdate = { c: Int, t: Int ->
