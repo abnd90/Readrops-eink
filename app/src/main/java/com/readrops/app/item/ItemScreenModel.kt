@@ -50,7 +50,7 @@ class ItemScreenModel(
 
     //TODO Is this really the best solution?
     lateinit var account: Account
-    lateinit var repository: BaseRepository
+    private lateinit var repository: BaseRepository
 
     init {
         screenModelScope.launch(dispatcher) {

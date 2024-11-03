@@ -2,21 +2,21 @@ package com.readrops.app.timelime.drawer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
@@ -26,13 +26,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,7 +61,8 @@ fun TimelineDrawer(
     onFeedClick: (Feed) -> Unit,
     modifier: Modifier
 ) {
-    var isSecondColumnVisible by remember { mutableStateOf(false) }
+    var isSecondColumnVisible by remember { mutableStateOf(state.filters.folderId != 0 || state.filters.feedId != 0) }
+    var selectedFolder by remember { mutableStateOf(screenModel.getSelectedFolder())}
     val navigator = LocalNavigator.currentOrThrow
     Row(modifier = modifier.fillMaxHeight()) {
         Column(modifier = Modifier
@@ -75,7 +76,7 @@ fun TimelineDrawer(
                             BorderedIconButton (
                                 onClick = { screenModel.closeDrawer() },
                             ) {
-                                Icon(Icons.Filled.ArrowBack, contentDescription = "Close Drawer")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close Drawer")
                             }
                         },
                         actions = {
@@ -101,9 +102,14 @@ fun TimelineDrawer(
                 ) {
                     DrawerContent(
                         state = state,
+                        selectedFolder = screenModel.getSelectedFolder(),
                         onClickDefaultItem = onClickDefaultItem,
                         onFolderClick = onFolderClick,
-                        onFeedClick = onFeedClick
+                        onFeedClick = onFeedClick,
+                        onFolderExpand = {
+                            selectedFolder = it
+                            isSecondColumnVisible = true
+                        }
                     )
                 }
 
@@ -118,16 +124,53 @@ fun TimelineDrawer(
                 .weight(0.4f)
         ) {
             if (isSecondColumnVisible) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, Color.Gray, RectangleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { /* Do nothing, just consume the click */ })
-                ) {
+                Scaffold { paddingValues ->
+                    val scrollState = rememberLazyListState()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(paddingValues)
+                            .padding(horizontal = 0.dp, vertical = 12.dp)
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        val feeds =
+                            if (selectedFolder != null) state.foldersAndFeeds[selectedFolder] else null
+                        if (feeds != null) {
+                            LaunchedEffect(feeds, state.filters.feedId) {
+                                feeds.indexOfFirst { it.id == state.filters.feedId }.let { index ->
+                                    if (index != -1) {
+                                        scrollState.requestScrollToItem(index)
+                                    }
+                                }
+                            }
+                            LazyColumn(state = scrollState) {
+                                items(feeds.size) { feedIdx ->
+                                    val feed = feeds[feedIdx]
+                                    DrawerFeedItem(
+                                        label = {
+                                            Text(
+                                                text = feed.name.orEmpty(),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        },
+                                        icon = {
+                                            FeedIcon(
+                                                iconUrl = feed.iconUrl,
+                                                name = feed.name.orEmpty()
+                                            )
+                                        },
+                                        badge = { Text(feed.unreadCount.toString()) },
+                                        selected = feed.id == state.filters.feedId,
+                                        onClick = { onFeedClick(feed) },
+                                        modifier = Modifier
+                                            .padding(NavigationDrawerItemDefaults.ItemPadding)
+                                            .selectedItemBorder(feed.id == state.filters.feedId),
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -148,9 +191,11 @@ fun TimelineDrawer(
 @Composable
 fun DrawerContent(
     state: TimelineState,
+    selectedFolder: Folder?,
     onClickDefaultItem: (MainFilter) -> Unit,
     onFolderClick: (Folder) -> Unit,
-    onFeedClick: (Feed) -> Unit
+    onFeedClick: (Feed) -> Unit,
+    onFolderExpand: (Folder) -> Unit,
 ) {
 
 Column {
@@ -185,13 +230,12 @@ Column {
                     badge = {
                         Text(folderEntry.value.sumOf { it.unreadCount }.toString())
                     },
-                    selected = state.filters.folderId == folder.id,
+                    selected = selectedFolder?.id == folder.id,
                     onClick = { onFolderClick(folder) },
-                    feeds = folderEntry.value,
-                    selectedFeed = state.filters.feedId,
-                    onFeedClick = { onFeedClick(it) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        .selectedItemBorder(state.filters.folderId == folder.id)
+                    modifier = Modifier
+                        .padding(NavigationDrawerItemDefaults.ItemPadding)
+                        .selectedItemBorder(selectedFolder?.id == folder.id),
+                    onExpand = {onFolderExpand(folder)}
                 )
             } else {
                 val feeds = folderEntry.value
@@ -271,7 +315,8 @@ fun DrawerDefaultItems(
         ),
         selected = selectedItem == MainFilter.NEW,
         onClick = { onClick(MainFilter.NEW) },
-        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+        modifier = Modifier
+            .padding(NavigationDrawerItemDefaults.ItemPadding)
             .selectedItemBorder(selectedItem == MainFilter.NEW),
     )
 
@@ -289,14 +334,15 @@ fun DrawerDefaultItems(
         ),
         selected = selectedItem == MainFilter.STARS,
         onClick = { onClick(MainFilter.STARS) },
-        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+        modifier = Modifier
+            .padding(NavigationDrawerItemDefaults.ItemPadding)
             .selectedItemBorder(selectedItem == MainFilter.STARS),
     )
 }
 
 @Composable
 fun DrawerDivider() {
-    Divider(
+    HorizontalDivider(
         thickness = 2.dp,
         modifier = Modifier.padding(
             vertical = MaterialTheme.spacing.drawerSpacing,

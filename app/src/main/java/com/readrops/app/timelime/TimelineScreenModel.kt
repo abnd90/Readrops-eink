@@ -435,16 +435,24 @@ class TimelineScreenModel(
         }
     }
 
-    fun itemReadStateChangedInItemScreen(itemId: Int, readState: Boolean) {
-        itemReadStateUpdates[itemId] = readState
-    }
-
     fun getItemScreenReadStateUpdate(itemId: Int): Boolean? {
         return getAndRemove(itemReadStateUpdates, itemId)
     }
 
     private fun invalidatePagingSource() {
         pagingSource?.invalidate()
+    }
+
+    fun getSelectedFolder(): Folder? {
+        val folderId = _timelineState.value.filters.folderId
+        val feedId = _timelineState.value.filters.feedId
+        return _timelineState.value.foldersAndFeeds.entries.firstNotNullOfOrNull { (folder, feeds) ->
+            when {
+                folder?.id == folderId -> folder
+                feeds.any { it.id == feedId } -> folder
+                else -> null
+            }
+        }
     }
 }
 

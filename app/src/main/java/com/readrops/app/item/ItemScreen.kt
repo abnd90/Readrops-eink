@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,7 +26,6 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.TextDecrease
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.TextIncrease
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,10 +43,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -68,12 +71,13 @@ import com.readrops.app.item.view.ItemLinearLayout
 import com.readrops.app.item.view.ItemWebView
 import com.readrops.app.timelime.TimelineScreenModel
 import com.readrops.app.util.FontPreference
-import com.readrops.app.util.Preferences
 import com.readrops.app.util.components.AndroidScreen
 import com.readrops.app.util.components.BorderedIconButton
 import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
@@ -85,10 +89,9 @@ class ItemScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
-        val preferences = koinInject<Preferences>()
-
         val context = LocalContext.current
         val navigator = LocalNavigator.currentOrThrow
+        val coroutineScope = rememberCoroutineScope()
 
         val screenModel =
             getScreenModel<ItemScreenModel>(parameters = { parametersOf(itemId) })
@@ -206,7 +209,7 @@ class ItemScreen(
                         timelineScreenModel.setTimelineItemIndex(newIndex)
                         navigator.replace(
                             ItemScreen(
-                                newItemWithFeed!!.item.id,
+                                newItemWithFeed.item.id,
                                 newIndex
                             )
                         )
@@ -244,20 +247,42 @@ class ItemScreen(
                                 enabled = readabilityState != ReadabilityState.IN_PROGRESS,
                                 checked = readabilityState == ReadabilityState.ON
                             ) {
-                                when (readabilityState) {
-                                    ReadabilityState.IN_PROGRESS -> {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = MaterialTheme.colorScheme.primary,
-                                            strokeWidth = 2.dp
-                                        )
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_reader_mode),
+                                    contentDescription = null
+                                )
+                                if (readabilityState == ReadabilityState.IN_PROGRESS) {
+                                    var isVisible by remember { mutableStateOf(true) }
+                                    val blinkingLine = remember {
+                                        object {
+                                            val draw: DrawScope.() -> Unit = {
+                                                if (isVisible) {
+                                                    drawLine(
+                                                        color = Color.DarkGray,
+                                                        start = Offset(1.dp.toPx(), size.height - 1.dp.toPx()),
+                                                        end = Offset(size.width - 1.dp.toPx(), size.height - 1.dp.toPx()),
+                                                        strokeWidth = 2.dp.toPx(),
+                                                        cap = StrokeCap.Round
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
-                                    else -> {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_reader_mode),
-                                            contentDescription = null
-                                        )
+
+                                    LaunchedEffect(Unit) {
+                                        coroutineScope.launch {
+                                            while (true) {
+                                                delay(500)
+                                                isVisible = !isVisible
+                                            }
+                                        }
                                     }
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.Bottom)
+                                            .fillMaxSize()
+                                            .drawBehind(blinkingLine.draw)
+                                    )
                                 }
                             }
                             if (itemListIndex != null &&
