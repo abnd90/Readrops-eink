@@ -19,6 +19,7 @@ import com.readrops.db.pojo.ItemWithFeed
 import com.readrops.db.util.DateUtils
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import org.jsoup.safety.Cleaner
 import org.jsoup.safety.Safelist
@@ -240,9 +241,24 @@ class ItemWebView(
                 Parser.unescapeEntities(itemWithFeed.item.text, false)
             )
             document.select("div,span").forEach { it.clearAttributes() }
+
+            itemWithFeed.websiteUrl?.let { applyPerWebsiteQuirks(it, document) }
             return sanitizeDoc(document).body().html()
         } else {
             ""
+        }
+    }
+
+    private fun applyPerWebsiteQuirks(uri: String, document: Document) {
+        if (uri.contains("xkcd.com") == true) {
+            document.select("img[title]").forEach {
+                val figure: Element = Element("figure")
+                val figcaption: Element =
+                    Element("figcaption").text(it.attr("title"))
+
+                it.wrap(figure.outerHtml());
+                it.after(figcaption);
+            }
         }
     }
 
