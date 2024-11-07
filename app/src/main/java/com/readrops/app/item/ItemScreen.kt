@@ -43,7 +43,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +71,7 @@ import com.readrops.app.util.components.BorderedIconButton
 import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
+import com.readrops.db.pojo.ItemWithFeed
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -86,7 +86,6 @@ class ItemScreen(
     override fun Content() {
         val context = LocalContext.current
         val navigator = LocalNavigator.currentOrThrow
-        val coroutineScope = rememberCoroutineScope()
 
         val screenModel =
             getScreenModel<ItemScreenModel>(parameters = { parametersOf(itemId) })
@@ -194,25 +193,34 @@ class ItemScreen(
                     },
                 )
             }
-            val replaceWithDeltaItem = { delta : Int ->
+
+            val getDeltaItem : (Int) -> ItemWithFeed? = { delta : Int ->
+                var newItemWithFeed: ItemWithFeed? = null
                 if (itemListIndex != null &&
                     timelineListItems[itemListIndex]!!.item.id == itemWithFeed.item.id) {
                     val newIndex = itemListIndex + delta
                     if ((delta < 0 && newIndex >= 0)
                         || (delta > 0 && newIndex < timelineListItems.itemCount)) {
-                        val newItemWithFeed = timelineListItems[newIndex]
-                        timelineScreenModel.setItemRead(newItemWithFeed!!.item)
-                        timelineScreenModel.setTimelineItemIndex(newIndex)
-                        navigator.replace(
-                            ItemScreen(
-                                newItemWithFeed.item.id,
-                                newIndex
-                            )
-                        )
+                        newItemWithFeed = timelineListItems[newIndex]
                     }
                 }
+                newItemWithFeed
             }
 
+            val replaceWithDeltaItem = { delta : Int ->
+                val newItemWithFeed = getDeltaItem(delta)
+                if (newItemWithFeed != null) {
+                    val newIndex = itemListIndex!! + delta
+                    timelineScreenModel.setItemRead(newItemWithFeed!!.item)
+                    timelineScreenModel.setTimelineItemIndex(newIndex)
+                    navigator.replace(
+                        ItemScreen(
+                            newItemWithFeed.item.id,
+                            newIndex
+                        )
+                    )
+                }
+            }
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = bottomBar,
@@ -243,20 +251,20 @@ class ItemScreen(
                                 enabled = readabilityState != ReadabilityState.IN_PROGRESS,
                                 checked = readabilityState == ReadabilityState.ON
                             ) {
-                                var color by remember { mutableStateOf(Color.Black) }
+                                var color by remember { mutableStateOf(Color.DarkGray) }
                                 if (readabilityState == ReadabilityState.IN_PROGRESS) {
                                     LaunchedEffect(Unit) {
                                         while (true) {
-                                            if (color == Color.Black)
-                                                color = Color.Gray
+                                            if (color == Color.DarkGray)
+                                                color = Color.LightGray
                                             else
-                                                color = Color.Black
-                                            delay(500)
+                                                color = Color.DarkGray
+                                            delay(1000)
                                         }
                                     }
                                 }
                                 if (readabilityState != ReadabilityState.IN_PROGRESS) {
-                                    color = Color.Black
+                                    color = Color.DarkGray
                                 }
                                 Icon(
                                     painter = painterResource(R.drawable.ic_reader_mode),
@@ -346,7 +354,9 @@ class ItemScreen(
                                     textSizeMultiplier = state.formatSettings.textSizeMultiplier,
                                     lineSizeMultiplier = state.formatSettings.lineSizeMultiplier,
                                     font = state.formatSettings.font,
-                                    readableText = if (readabilityState == ReadabilityState.ON) readableText else ""
+                                    readableText = if (readabilityState == ReadabilityState.ON) readableText else "",
+                                    nextItem = getDeltaItem(+1),
+                                    prevItem = getDeltaItem(-1)
                                 )
 
                                 refreshAndroidView = false

@@ -28,10 +28,20 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 
-class WebAppInterface(private val onPageCountUpdate: (Int) -> Unit){
+class WebAppInterface(private val onPageCountUpdate: (Int) -> Unit,
+    private val nextItem: () -> Unit,
+    private val prevItem: () -> Unit){
     @JavascriptInterface
     fun setPageCount(pageCount: Int) {
         onPageCountUpdate(pageCount)
+    }
+
+    @JavascriptInterface
+    fun gotoItem(dir: Int) {
+        if (dir > 0)
+            nextItem()
+        else
+            prevItem()
     }
 }
 
@@ -120,10 +130,10 @@ class ItemWebView(
                 }
             })
 
-        addJavascriptInterface(WebAppInterface { pageCount ->
+        addJavascriptInterface(WebAppInterface (onPageCountUpdate = { pageCount ->
             totalPages = pageCount
             onPageUpdate()
-        }, "Android")
+        }, nextItem = nextItem, prevItem = previousItem), "Android")
 
         if (0 != (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
             setWebContentsDebuggingEnabled(true)
@@ -156,7 +166,9 @@ class ItemWebView(
         textSizeMultiplier: Float,
         lineSizeMultiplier: Float,
         readableText: String,
-        font: FontPreference
+        font: FontPreference,
+        nextItem: ItemWithFeed?,
+        prevItem: ItemWithFeed?
     ) {
         val direction = if (Locale.getDefault().layoutDirection == LAYOUT_DIRECTION_LTR) {
             "ltr"
@@ -197,6 +209,19 @@ class ItemWebView(
                 " · ${itemWithFeed.item.author}"
         }
 
+        val itemLinksHtml = StringBuilder()
+
+        if (prevItem != null) {
+            itemLinksHtml.append(
+                "<div id=\"_previousarticle\"><a href=\"#\" onclick=\"Android.gotoItem(-1);\">&lsaquo; Previous Article</a><p>${prevItem.item.title}</p></div>"
+            )
+        }
+
+        if (nextItem != null) {
+            itemLinksHtml.append(
+                "<div id=\"_nextarticle\"><a href=\"#\" onclick=\"Android.gotoItem(+1);\">Next Article &rsaquo;</a><p>${nextItem.item.title}</p></div>"
+            )
+        }
         // TODO: Find or write a templating library
         val string = context.getString(
             R.string.webview_html_template,
@@ -213,6 +238,7 @@ class ItemWebView(
             "${textSizeMultiplier}em",
             "${lineSizeMultiplier}em",
             fontFamily,
+            itemLinksHtml,
         )
 
         loadDataWithBaseURL(
