@@ -129,7 +129,8 @@ class ItemScreenModel(
                     font = FontPreference.fromInt(it[0] as Int),
                     justifyText = it[1] as Boolean,
                     textSizeMultiplier = it[2] as Float,
-                    lineSizeMultiplier = it[3] as Float
+                    lineSizeMultiplier = it[3] as Float,
+                    isDefault = false
                 )
             }
         )
@@ -289,7 +290,8 @@ data class ItemFormatSettings(
     val justifyText: Boolean = false,
     val textSizeMultiplier: Float = 1.0f,
     val lineSizeMultiplier: Float = 1.0f,
-    val font: FontPreference = FontPreference.SANS_SERIF
+    val font: FontPreference = FontPreference.SANS_SERIF,
+    val isDefault: Boolean = true
 )
 
 @Stable

@@ -47,11 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -77,7 +73,6 @@ import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
@@ -116,7 +111,8 @@ class ItemScreen(
         var readableText by remember { mutableStateOf("") }
 
         LaunchedEffect(state.formatSettings) {
-            refreshAndroidView = true
+            if (!state.formatSettings.isDefault)
+                refreshAndroidView = true
         }
 
         if (state.imageDialogUrl != null) {
@@ -247,43 +243,26 @@ class ItemScreen(
                                 enabled = readabilityState != ReadabilityState.IN_PROGRESS,
                                 checked = readabilityState == ReadabilityState.ON
                             ) {
+                                var color by remember { mutableStateOf(Color.Black) }
+                                if (readabilityState == ReadabilityState.IN_PROGRESS) {
+                                    LaunchedEffect(Unit) {
+                                        while (true) {
+                                            if (color == Color.Black)
+                                                color = Color.Gray
+                                            else
+                                                color = Color.Black
+                                            delay(500)
+                                        }
+                                    }
+                                }
+                                if (readabilityState != ReadabilityState.IN_PROGRESS) {
+                                    color = Color.Black
+                                }
                                 Icon(
                                     painter = painterResource(R.drawable.ic_reader_mode),
+                                    tint = color,
                                     contentDescription = null
                                 )
-                                if (readabilityState == ReadabilityState.IN_PROGRESS) {
-                                    var isVisible by remember { mutableStateOf(true) }
-                                    val blinkingLine = remember {
-                                        object {
-                                            val draw: DrawScope.() -> Unit = {
-                                                if (isVisible) {
-                                                    drawLine(
-                                                        color = Color.DarkGray,
-                                                        start = Offset(1.dp.toPx(), size.height - 1.dp.toPx()),
-                                                        end = Offset(size.width - 1.dp.toPx(), size.height - 1.dp.toPx()),
-                                                        strokeWidth = 2.dp.toPx(),
-                                                        cap = StrokeCap.Round
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    LaunchedEffect(Unit) {
-                                        coroutineScope.launch {
-                                            while (true) {
-                                                delay(500)
-                                                isVisible = !isVisible
-                                            }
-                                        }
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.Bottom)
-                                            .fillMaxSize()
-                                            .drawBehind(blinkingLine.draw)
-                                    )
-                                }
                             }
                             if (itemListIndex != null &&
                                 timelineListItems[itemListIndex]?.item?.id == itemId) {
