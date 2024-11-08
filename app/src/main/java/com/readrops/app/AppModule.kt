@@ -16,6 +16,7 @@ import com.readrops.app.account.credentials.AccountCredentialsScreenModel
 import com.readrops.app.account.selection.AccountSelectionScreenModel
 import com.readrops.app.feeds.FeedScreenModel
 import com.readrops.app.item.ItemScreenModel
+import com.readrops.app.item.view.ItemWebView
 import com.readrops.app.more.preferences.PreferencesScreenModel
 import com.readrops.app.notifications.NotificationsScreenModel
 import com.readrops.app.repositories.BaseRepository
@@ -113,4 +114,8 @@ val appModule = module {
     single { Preferences(get()) }
 
     single { NotificationManagerCompat.from(get()) }
+
+    single {
+        ItemWebView(get())
+    }
 }

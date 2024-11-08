@@ -147,6 +147,7 @@
         }
 
         #_articlelinks {
+            break-inside: avoid;
             display: flex;
             margin-top: 25px;
             font-size: large;

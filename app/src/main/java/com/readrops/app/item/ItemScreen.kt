@@ -73,6 +73,7 @@ import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import com.readrops.db.pojo.ItemWithFeed
 import kotlinx.coroutines.delay
+import org.koin.compose.getKoin
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
@@ -326,6 +327,7 @@ class ItemScreen(
                         .padding(paddingValues)
                         .fillMaxSize()
                 ) {
+                    var itemWebView : ItemWebView = getKoin().get()
                     AndroidView(
                         factory = { context ->
                             ItemLinearLayout(
@@ -336,14 +338,14 @@ class ItemScreen(
                                     currentPage = c
                                     totalPages = t
                                 },
-                                {},
                                 nextItem = {replaceWithDeltaItem(+1)},
-                                previousItem = {replaceWithDeltaItem(-1)}
+                                previousItem = {replaceWithDeltaItem(-1)},
+                                webView = itemWebView,
                             )
                         },
                         update = { linearLayout ->
                             if (refreshAndroidView) {
-                                val webView = linearLayout.getChildAt(1) as ItemWebView
+                                val webView = linearLayout.getChildAt(0) as ItemWebView
 
                                 webView.loadText(
                                     itemWithFeed = itemWithFeed,
@@ -361,6 +363,17 @@ class ItemScreen(
 
                                 refreshAndroidView = false
                             }
+                        },
+                        onRelease = { linearLayout: ItemLinearLayout ->
+                            // Find and remove WebView if it exists in LinearLayout
+                            val webView = linearLayout.getChildAt(0) as? ItemWebView
+                            webView?.apply {
+                                clearHistory()
+                                loadUrl("about:blank")
+                                onPause()
+                                removeAllViews()
+                            }
+                            linearLayout.removeAllViews()
                         },
                         modifier = Modifier.matchParentSize()
                     )

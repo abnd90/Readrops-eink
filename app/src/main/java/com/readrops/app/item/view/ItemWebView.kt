@@ -48,17 +48,18 @@ class WebAppInterface(private val onPageCountUpdate: (Int) -> Unit,
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class ItemWebView(
     context: Context,
-    onUrlClick: (String) -> Unit,
-    onImageLongPress: (String) -> Unit,
     attrs: AttributeSet? = null,
-    onPageUpdate: (Int, Int) -> Unit,
-    previousItem: () -> Unit,
-    nextItem: () -> Unit,
 ) : WebView(context, attrs) {
+
+    private var onUrlClick: (String) -> Unit = {}
+    private var onImageLongPress: (String) -> Unit = {}
+    private var onPageUpdate: (Int, Int) -> Unit = {_, _ ->}
+    private var previousItem: () -> Unit = {}
+    private var nextItem: () -> Unit = {}
 
     var currentPage: Int = 0
     var totalPages: Int = 0
-    var onPageUpdate = {onPageUpdate(currentPage, totalPages)}
+    var pageUpdated = {onPageUpdate(currentPage, totalPages)}
     private val gestureDetector: GestureDetector
 
     init {
@@ -132,8 +133,11 @@ class ItemWebView(
 
         addJavascriptInterface(WebAppInterface (onPageCountUpdate = { pageCount ->
             totalPages = pageCount
-            onPageUpdate()
-        }, nextItem = nextItem, prevItem = previousItem), "Android")
+            if (currentPage >= totalPages) {
+                lastPage()
+            }
+            pageUpdated()
+        }, nextItem = { this.nextItem() }, prevItem = { this.previousItem() }), "Android")
 
         if (0 != (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
             setWebContentsDebuggingEnabled(true)
@@ -143,10 +147,6 @@ class ItemWebView(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gestureDetector.onTouchEvent(event)
         return super.onTouchEvent(event)
-    }
-
-    override fun scrollTo(x: Int, y: Int) {
-        // Do nothing
     }
 
     public override fun overScrollBy(
@@ -313,8 +313,29 @@ class ItemWebView(
         }
     }
 
-    fun goToPage(page:Int) {
+    private fun firstPage() {
+        currentPage = 0
+        goToPage(0)
+    }
+
+    private fun lastPage() {
+        currentPage = totalPages - 1
+        goToPage(currentPage)
+    }
+
+    private fun goToPage(page:Int) {
         super.scrollTo(page * width, 0)
-        onPageUpdate()
+        pageUpdated()
+    }
+
+    fun init(onUrlClick: (String) -> Unit, onImageLongPress: (String) -> Unit, onPageUpdate: (Int, Int) -> Unit, previousItem: () -> Unit, nextItem: () -> Unit) {
+        this.onUrlClick = onUrlClick
+        this.onImageLongPress = onImageLongPress
+        this.onPageUpdate = onPageUpdate
+        this.previousItem = previousItem
+        this.nextItem = nextItem
+
+        totalPages = 0
+        firstPage()
     }
 }
