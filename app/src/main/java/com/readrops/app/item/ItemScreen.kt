@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -285,6 +286,16 @@ class ItemScreen(
                                     )
                                 }
                             }
+                            BorderedToggleIconButton(
+                                checked = showTextFormatPopup,
+                                onCheckedChange = { checked -> showTextFormatPopup = checked },
+                                drawBottomTriangle = true
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.TextFormat,
+                                    contentDescription = "Text Formatting"
+                                )
+                            }
                             if (itemListIndex != null &&
                                 timelineListItems[itemListIndex]?.item?.id == itemId) {
                                 BorderedIconButton(
@@ -309,16 +320,6 @@ class ItemScreen(
                                         contentDescription = "Next Article"
                                     )
                                 }
-                            }
-                            BorderedToggleIconButton(
-                                checked = showTextFormatPopup,
-                                onCheckedChange = { checked -> showTextFormatPopup = checked },
-                                drawBottomTriangle = true
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.TextFormat,
-                                    contentDescription = "Text Formatting"
-                                )
                             }
                         },
                         navigationIcon = {
@@ -391,7 +392,13 @@ class ItemScreen(
                     )
 
                     if (showTextFormatPopup) {
+                        val xOffset =
+                            with(LocalDensity.current) {
+                                -96.dp.toPx()
+                            }
                         MoreOptionsPopup(
+                            alignment = Alignment.TopEnd,
+                            offset = IntOffset(xOffset.toInt(), 0),
                             onDismiss = { showTextFormatPopup = false },
                             onTextSizeSliderValueChange = { newValue ->
                                 screenModel.setItemTextSizeMultiplier(newValue)
@@ -437,7 +444,7 @@ fun BorderedPopup(
         Surface(
             modifier = modifier
                 .border(
-                    width = 2.dp,
+                    width = 1.dp,
                     color = Color.Black,
                     shape = RoundedCornerShape(4.dp)
                 ),
@@ -450,6 +457,8 @@ fun BorderedPopup(
 
 @Composable
 fun MoreOptionsPopup(
+    alignment: Alignment,
+    offset: IntOffset,
     onDismiss: () -> Unit,
     onTextSizeSliderValueChange: (Float) -> Unit,
     onLineSizeSliderValueChange: (Float) -> Unit,
@@ -471,9 +480,10 @@ fun MoreOptionsPopup(
     )
 
     BorderedPopup(
-        alignment = Alignment.TopEnd,
+        alignment = alignment,
         modifier = Modifier
         .padding(end = 8.dp),
+        offset = offset,
         onDismiss = onDismiss
     ) {
         Column(

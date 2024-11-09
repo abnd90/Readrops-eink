@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -74,7 +75,6 @@ import com.readrops.app.item.ItemScreen
 import com.readrops.app.timelime.drawer.TimelineDrawer
 import com.readrops.app.util.ErrorMessage
 import com.readrops.app.util.components.BorderedIconButton
-import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
 import com.readrops.app.util.components.CenteredProgressIndicator
 import com.readrops.app.util.components.Placeholder
@@ -360,17 +360,15 @@ object TimelineTab : Tab {
                                     modifier = Modifier.align(Alignment.End),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    BorderedTextButton(
-                                        onClick = { screenModel.closeDialog() },
-                                    ) {
-                                        Text(stringResource(R.string.cancel))
-                                    }
-                                    BorderedTextButton(onClick = {
+                                    BorderedIconButton(onClick = {
                                         screenModel.setAllItemsRead()
                                         items.refresh()
                                         screenModel.closeDialog()
                                     }) {
-                                        Text(stringResource(R.string.validate))
+                                        Icon(
+                                            imageVector = Icons.Filled.Check,
+                                            contentDescription = "Yes"
+                                        )
                                     }
                                 }
                             }
