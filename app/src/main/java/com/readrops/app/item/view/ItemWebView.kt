@@ -145,7 +145,9 @@ class ItemWebView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(event)
+        if (gestureDetector.onTouchEvent(event)) {
+            return true
+        }
         return super.onTouchEvent(event)
     }
 

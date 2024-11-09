@@ -67,9 +67,12 @@ import com.readrops.app.item.view.ItemWebView
 import com.readrops.app.timelime.TimelineScreenModel
 import com.readrops.app.util.FontPreference
 import com.readrops.app.util.components.AndroidScreen
+import com.readrops.app.util.components.BORDER_COLOR
+import com.readrops.app.util.components.BORDER_WIDTH
 import com.readrops.app.util.components.BorderedIconButton
 import com.readrops.app.util.components.BorderedTextButton
 import com.readrops.app.util.components.BorderedToggleIconButton
+import com.readrops.app.util.components.CORNER_RADIUS
 import com.readrops.app.util.components.CenteredProgressIndicator
 import com.readrops.db.pojo.ItemWithFeed
 import kotlinx.coroutines.delay
@@ -252,26 +255,35 @@ class ItemScreen(
                                 enabled = readabilityState != ReadabilityState.IN_PROGRESS,
                                 checked = readabilityState == ReadabilityState.ON
                             ) {
-                                var color by remember { mutableStateOf(Color.DarkGray) }
-                                if (readabilityState == ReadabilityState.IN_PROGRESS) {
-                                    LaunchedEffect(Unit) {
-                                        while (true) {
-                                            if (color == Color.DarkGray)
-                                                color = Color.LightGray
-                                            else
-                                                color = Color.DarkGray
-                                            delay(1000)
-                                        }
-                                    }
-                                }
+                                var borderColor by remember { mutableStateOf(Color.Transparent) }
                                 if (readabilityState != ReadabilityState.IN_PROGRESS) {
-                                    color = Color.DarkGray
+                                    borderColor = Color.Transparent
                                 }
                                 Icon(
                                     painter = painterResource(R.drawable.ic_reader_mode),
-                                    tint = color,
                                     contentDescription = null
                                 )
+                                if (readabilityState == ReadabilityState.IN_PROGRESS) {
+                                    LaunchedEffect(Unit) {
+                                        while (true) {
+                                            if (borderColor == BORDER_COLOR)
+                                                borderColor = Color.Transparent
+                                            else
+                                                borderColor = BORDER_COLOR
+                                            delay(500)
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.Bottom)
+                                            .fillMaxSize()
+                                            .border(
+                                                width = BORDER_WIDTH,
+                                                color = borderColor,
+                                                shape = RoundedCornerShape(CORNER_RADIUS)
+                                            )
+                                    )
+                                }
                             }
                             if (itemListIndex != null &&
                                 timelineListItems[itemListIndex]?.item?.id == itemId) {

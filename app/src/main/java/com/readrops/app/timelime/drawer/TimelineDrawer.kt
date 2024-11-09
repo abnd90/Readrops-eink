@@ -124,13 +124,18 @@ fun TimelineDrawer(
                 .weight(0.4f)
         ) {
             if (isSecondColumnVisible) {
-                Scaffold { paddingValues ->
+                Scaffold (
+                    topBar = {
+                        TopAppBar(
+                            title = { selectedFolder?.name?.let { Text(it) } },
+                        )
+                    }) { paddingValues ->
                     val scrollState = rememberLazyListState()
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(paddingValues)
-                            .padding(horizontal = 0.dp, vertical = 12.dp)
+                            .padding(bottom = 12.dp)
                             .background(MaterialTheme.colorScheme.surface)
                     ) {
                         val feeds =
