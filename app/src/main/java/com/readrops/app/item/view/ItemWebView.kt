@@ -60,6 +60,8 @@ class ItemWebView(
     var currentPage: Int = 0
     var totalPages: Int = 0
     var pageUpdated = {onPageUpdate(currentPage, totalPages)}
+
+    private val sideMarginPerc = 10
     private val gestureDetector: GestureDetector
 
     init {
@@ -145,6 +147,25 @@ class ItemWebView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                val touchX = event.x
+                val pageWidth = width
+                val sideMarginWidth = pageWidth * sideMarginPerc / 100
+
+                when {
+                    touchX < sideMarginWidth -> {
+                        previousPage()
+                        return true
+                    }
+                    touchX > pageWidth - sideMarginWidth -> {
+                        nextPage()
+                        return true
+                    }
+                }
+            }
+        }
+
         if (gestureDetector.onTouchEvent(event)) {
             return true
         }
@@ -241,6 +262,7 @@ class ItemWebView(
             "${lineSizeMultiplier}em",
             fontFamily,
             itemLinksHtml,
+            "$sideMarginPerc"
         )
 
         loadDataWithBaseURL(

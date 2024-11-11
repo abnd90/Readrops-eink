@@ -45,7 +45,7 @@
         }
 
         #_article {
-            margin: 10%%;
+            margin: %15$s%%;
             margin-top: 0px;
             margin-bottom: 0px;
         }
@@ -150,7 +150,7 @@
             break-inside: avoid;
             display: flex;
             margin-top: 25px;
-            font-size: large;
+            font-size: larger;
         }
         #_nextarticle {
             flex: 1;
@@ -159,6 +159,8 @@
         }
         #_nextarticle p {
             padding-top: 5px;
+            padding-left: 15px;
+            font-size: large;
         }
         #_previousarticle {
             flex: 1;
@@ -167,6 +169,8 @@
         }
         #_previousarticle p {
             padding-top: 5px;
+            padding-right: 15px;
+            font-size: large;
         }
         </style>
 
