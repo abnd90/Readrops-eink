@@ -124,12 +124,16 @@ class ItemScreenModel(
             preferences.itemJustifyText.flow,
             preferences.itemTextSizeMultiplier.flow,
             preferences.itemLineSizeMultiplier.flow,
+            preferences.itemLRMarginPerc.flow,
+            preferences.itemTBMarginPerc.flow,
             transform = { it ->
                 ItemFormatSettings(
                     font = FontPreference.fromInt(it[0] as Int),
                     justifyText = it[1] as Boolean,
                     textSizeMultiplier = it[2] as Float,
                     lineSizeMultiplier = it[3] as Float,
+                    LrMarginPerc = it[4] as Int,
+                    TbMarginPerc = it[5] as Int,
                     isDefault = false
                 )
             }
@@ -281,6 +285,21 @@ class ItemScreenModel(
                 it.copy(formatSettings = it.formatSettings.copy(font = font))
             }
         }
+    }
+
+    fun setItemMargins(lr : Int, tb: Int) {
+        screenModelScope.launch {
+            preferences.itemLRMarginPerc.write(lr)
+            preferences.itemTBMarginPerc.write(tb)
+            mutableState.update {
+                it.copy(
+                    formatSettings = it.formatSettings.copy(
+                        LrMarginPerc = lr,
+                        TbMarginPerc = tb
+                    )
+                )
+            }
+        }
 
     }
 }
@@ -291,6 +310,8 @@ data class ItemFormatSettings(
     val textSizeMultiplier: Float = 1.0f,
     val lineSizeMultiplier: Float = 1.0f,
     val font: FontPreference = FontPreference.SANS_SERIF,
+    val LrMarginPerc: Int = 0,
+    val TbMarginPerc: Int = 0,
     val isDefault: Boolean = true
 )
 

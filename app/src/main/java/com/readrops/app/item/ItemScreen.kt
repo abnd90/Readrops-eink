@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.DensityLarge
 import androidx.compose.material.icons.filled.DensitySmall
+import androidx.compose.material.icons.filled.Expand
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.TextDecrease
@@ -46,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -107,7 +110,6 @@ class ItemScreen(
         val snackbarHostState = remember { SnackbarHostState() }
         var refreshAndroidView by remember { mutableStateOf(false) }
 
-        // https://developer.android.com/develop/ui/compose/touch-input/pointer-input/scroll#parent-compose-child-view
         val bottomBarHeight = 64.dp
 
         var showTextFormatPopup by remember { mutableStateOf(false) }
@@ -354,9 +356,15 @@ class ItemScreen(
                                 nextItem = {replaceWithDeltaItem(+1)},
                                 previousItem = {replaceWithDeltaItem(-1)},
                                 webView = itemWebView,
+                                lrMarginPerc = state.formatSettings.LrMarginPerc,
+                                tbMarginPerc = state.formatSettings.TbMarginPerc
                             )
                         },
                         update = { linearLayout ->
+
+                            linearLayout.adjustMargins(state.formatSettings.TbMarginPerc,
+                                state.formatSettings.LrMarginPerc)
+
                             if (refreshAndroidView) {
                                 val webView = linearLayout.getChildAt(0) as ItemWebView
 
@@ -371,7 +379,8 @@ class ItemScreen(
                                     font = state.formatSettings.font,
                                     readableText = if (readabilityState == ReadabilityState.ON) readableText else "",
                                     nextItem = getDeltaItem(+1),
-                                    prevItem = getDeltaItem(-1)
+                                    prevItem = getDeltaItem(-1),
+                                    lrMarginPerc = state.formatSettings.LrMarginPerc,
                                 )
 
                                 refreshAndroidView = false
@@ -411,6 +420,11 @@ class ItemScreen(
                             isJustified = state.formatSettings.justifyText,
                             onJustifyToggle = { newValue ->
                                 screenModel.setItemJustifyText(newValue)
+                            },
+                            lrMarginPerc = state.formatSettings.LrMarginPerc,
+                            tbMarginPerc = state.formatSettings.TbMarginPerc,
+                            onMarginsChange = { lr: Int, tb: Int->
+                                screenModel.setItemMargins(lr, tb)
                             },
                             selectedFont = state.formatSettings.font,
                             onFontChange = { newFont ->
@@ -466,11 +480,29 @@ fun MoreOptionsPopup(
     lineSizeSliderValue: Float,
     isJustified: Boolean,
     onJustifyToggle: (Boolean) -> Unit,
+    lrMarginPerc: Int,
+    tbMarginPerc: Int,
+    onMarginsChange: (Int, Int) -> Unit,
     selectedFont: FontPreference,
     onFontChange: (FontPreference) -> Unit
 ) {
     val snapPoints = listOf(1f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.8f, 1.9f, 2f)
     var expanded by remember { mutableStateOf(false) }
+
+    val snapPointsMargins =
+        listOf(
+            0f,
+            0.02f,
+            0.04f,
+            0.06f,
+            0.08f,
+            0.10f,
+            0.12f,
+            0.14f,
+            0.16f,
+            0.18f,
+            0.20f,
+        )
 
     val fontNames = mapOf(
         FontPreference.SERIF to "Serif",
@@ -602,6 +634,113 @@ fun MoreOptionsPopup(
                     checked = isJustified,
                     onCheckedChange = onJustifyToggle
                 )
+            }
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BorderedIconButton (
+                    onClick = {
+                        val currentIndex = snapPointsMargins.indexOfFirst { it == lrMarginPerc/100f }
+                        if (currentIndex > 0) {
+                            onMarginsChange(
+                                (snapPointsMargins[currentIndex - 1] * 100).toInt(),
+                                tbMarginPerc)
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Filled.Expand,
+                        contentDescription = "Decrease",
+                        modifier = Modifier.rotate(90f)
+                    )
+                }
+
+                Slider(
+                    value = lrMarginPerc / 100f,
+                    onValueChange = { newValue ->
+                        val value =
+                            snapPointsMargins.minByOrNull { kotlin.math.abs(it - newValue) }
+                                ?: newValue
+                        onMarginsChange((value * 100).toInt(), tbMarginPerc)
+                    },
+                    valueRange = 0f..0.20f,
+                    steps = 9,
+                    modifier = Modifier.width(200.dp)
+                )
+
+                BorderedIconButton(
+                    onClick = {
+                        val currentIndex = snapPointsMargins.indexOfFirst { it == lrMarginPerc/100f }
+                        if (currentIndex < snapPointsMargins.size - 1) {
+                            onMarginsChange(
+                                (snapPointsMargins[currentIndex + 1] * 100).toInt(),
+                                tbMarginPerc
+                            )
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Compress,
+                        contentDescription = "Increase",
+                        modifier = Modifier.rotate(90f)
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BorderedIconButton (
+                    onClick = {
+                        val currentIndex = snapPointsMargins.indexOfFirst { it == tbMarginPerc/100f }
+                        if (currentIndex > 0) {
+                            onMarginsChange(
+                                lrMarginPerc, (snapPointsMargins[currentIndex - 1] * 100).toInt())
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Filled.Expand,
+                        contentDescription = "Decrease",
+                    )
+                }
+
+                Slider(
+                    value = tbMarginPerc / 100f,
+                    onValueChange = { newValue ->
+                        val value =
+                            snapPointsMargins.minByOrNull { kotlin.math.abs(it - newValue) }
+                                ?: newValue
+                        onMarginsChange(lrMarginPerc, (value * 100).toInt())
+                    },
+                    valueRange = 0f..0.20f,
+                    steps = 9,
+                    modifier = Modifier.width(200.dp)
+                )
+
+                BorderedIconButton(
+                    onClick = {
+                        val currentIndex = snapPointsMargins.indexOfFirst { it == tbMarginPerc/100f }
+                        if (currentIndex < snapPointsMargins.size - 1) {
+                            onMarginsChange(
+                                lrMarginPerc,
+                                (snapPointsMargins[currentIndex + 1] * 100).toInt()
+                            )
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Compress,
+                        contentDescription = "Increase",
+                    )
+                }
             }
             Row(
                 modifier = Modifier

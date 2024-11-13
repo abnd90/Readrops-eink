@@ -117,6 +117,17 @@ class Preferences(
         default = FontPreference.SANS_SERIF.value
     )
 
+    val itemLRMarginPerc = Preference(
+        dataStore = dataStore,
+        key = intPreferencesKey("item_margin_perc_lr"),
+        default = 10
+    )
+
+    val itemTBMarginPerc = Preference(
+        dataStore = dataStore,
+        key = intPreferencesKey("item_margin_perc_tb"),
+        default = 0
+    )
 }
 
 enum class FontPreference(val value: Int) {

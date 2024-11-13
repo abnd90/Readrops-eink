@@ -431,9 +431,9 @@ object TimelineTab : Tab {
                                                 actualTimelinePadding =
                                                     minTimelinePadding + (mainRowHeight - (timelineItemHeight * itemsPerPage)) / (2 * itemsPerPage)
                                                 Column(
-                                                        verticalArrangement = Arrangement.spacedBy(
-                                                            actualTimelinePadding
-                                                        )
+                                                    verticalArrangement = Arrangement.spacedBy(
+                                                        actualTimelinePadding
+                                                    )
                                                 ) {
                                                     repeat(itemsPerPage) { columnIndex ->
                                                         val itemIndex =

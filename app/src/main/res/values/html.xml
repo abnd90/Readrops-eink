@@ -45,9 +45,7 @@
         }
 
         #_article {
-            margin: %15$s%%;
-            margin-top: 0px;
-            margin-bottom: 0px;
+            margin: 0 %15$s%%;
         }
 
         #_article > h1 {

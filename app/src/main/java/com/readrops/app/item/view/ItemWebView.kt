@@ -4,8 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.util.AttributeSet
-import android.view.GestureDetector
-import android.view.MotionEvent
+import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -24,7 +23,6 @@ import org.jsoup.parser.Parser
 import org.jsoup.safety.Cleaner
 import org.jsoup.safety.Safelist
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 
@@ -61,9 +59,6 @@ class ItemWebView(
     var totalPages: Int = 0
     var pageUpdated = {onPageUpdate(currentPage, totalPages)}
 
-    private val sideMarginPerc = 10
-    private val gestureDetector: GestureDetector
-
     init {
         settings.javaScriptEnabled = true
         settings.builtInZoomControls = true
@@ -71,6 +66,10 @@ class ItemWebView(
         settings.setSupportZoom(false)
         isVerticalScrollBarEnabled = false
         isHorizontalScrollBarEnabled = false
+
+        // TODO: Software rendering makes scroll less janky, at-least on the supernote.
+        // Is this true for all devices?
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null)
 
         webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -91,48 +90,6 @@ class ItemWebView(
             false
         }
 
-        gestureDetector =
-            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-                private val SWIPE_THRESHOLD = 50
-                private val SWIPE_VELOCITY_THRESHOLD = 30
-
-                override fun onFling(
-                    e1: MotionEvent?,
-                    e2: MotionEvent,
-                    velocityX: Float,
-                    velocityY: Float
-                ): Boolean {
-                    val diffX = e2.x - (e1?.x ?: 0f)
-                    val diffY = e2.y - (e1?.y ?: 0f)
-
-                    if (abs(diffX) > abs(diffY) &&
-                        abs(diffX) > SWIPE_THRESHOLD &&
-                        abs(velocityX) > SWIPE_VELOCITY_THRESHOLD
-                    ) {
-                        // Swipe left/right
-                        if (diffX > 0) {
-                            previousPage()
-                        } else {
-                            nextPage()
-                        }
-                        return true
-                    }
-
-                    if (abs(diffX) < abs(diffY) &&
-                        abs(diffY) > 5 * SWIPE_THRESHOLD &&
-                        abs(velocityY) > 2 * SWIPE_VELOCITY_THRESHOLD
-                    ) {
-                        if (diffY > 0) {
-                            previousItem()
-                        } else {
-                            nextItem()
-                        }
-                        return true
-                    }
-                    return false
-                }
-            })
-
         addJavascriptInterface(WebAppInterface (onPageCountUpdate = { pageCount ->
             totalPages = pageCount
             if (currentPage >= totalPages) {
@@ -144,32 +101,6 @@ class ItemWebView(
         if (0 != (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
             setWebContentsDebuggingEnabled(true)
         }
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                val touchX = event.x
-                val pageWidth = width
-                val sideMarginWidth = pageWidth * sideMarginPerc / 100
-
-                when {
-                    touchX < sideMarginWidth -> {
-                        previousPage()
-                        return true
-                    }
-                    touchX > pageWidth - sideMarginWidth -> {
-                        nextPage()
-                        return true
-                    }
-                }
-            }
-        }
-
-        if (gestureDetector.onTouchEvent(event)) {
-            return true
-        }
-        return super.onTouchEvent(event)
     }
 
     public override fun overScrollBy(
@@ -191,7 +122,8 @@ class ItemWebView(
         readableText: String,
         font: FontPreference,
         nextItem: ItemWithFeed?,
-        prevItem: ItemWithFeed?
+        prevItem: ItemWithFeed?,
+        lrMarginPerc: Int
     ) {
         val direction = if (Locale.getDefault().layoutDirection == LAYOUT_DIRECTION_LTR) {
             "ltr"
@@ -262,7 +194,7 @@ class ItemWebView(
             "${lineSizeMultiplier}em",
             fontFamily,
             itemLinksHtml,
-            "$sideMarginPerc"
+            lrMarginPerc
         )
 
         loadDataWithBaseURL(
